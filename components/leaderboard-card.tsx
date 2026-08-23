@@ -46,7 +46,7 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
   const description = meta?.description || '';
   const favicon = meta?.favicon || `https://www.google.com/s2/favicons?domain=${item.name}&sz=32`;
 
-  const href = `${item.url}${item.url.includes('?') ? '&' : '?'}utm_source=everybid&utm_medium=leaderboard&utm_campaign=listings`;
+  const href = `${item.url}${item.url.includes('?') ? '&' : '?'}utm_source=digitalbillboard&utm_medium=leaderboard&utm_campaign=listings`;
 
   const handleClick = () => {
     fetch('/api/click', {

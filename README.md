@@ -1,8 +1,6 @@
-# Outbid Template
+# Digital Billboard
 
-A pay-to-rank leaderboard site built with Next.js and shadcn/ui — think "outbid the person above you to climb the rankings." Entries compete for position by claiming a spot at a higher bid than the current holder, with a live leaderboard, trending/activity feeds, and per-entry metadata fetched from each listed site.
-
-This repo is meant to be used as a **template**: clone it, swap in your own data and branding, and ship your own version.
+A real-time pay-to-rank public billboard and leaderboard site built with Next.js and shadcn/ui. Entries compete for billboard positions by claiming a spot at a higher bid, with a live leaderboard, trending/activity feeds, and per-entry metadata.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/shadcn-labs/outbid-template)
 

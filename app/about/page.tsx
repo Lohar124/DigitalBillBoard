@@ -12,7 +12,7 @@ export default function AboutPage() {
             <h1 className="text-4xl font-bold tracking-tight">About</h1>
             <div className="mt-8 space-y-6 text-muted-foreground">
               <p>
-                Everybid is a real-time, pay-to-rank public leaderboard for websites, products, and builders. There are no ads, no algorithms, and no sponsorships. Rank is purely determined by the bid — nothing else.
+                Digital Billboard is a real-time, pay-to-rank public leaderboard for websites, products, and builders. There are no ads, no algorithms, and no sponsorships. Rank is purely determined by the bid — nothing else.
               </p>
               <p>
                 The concept is simple: choose any website or @handle and place a bid. The higher your bid, the higher your position on the leaderboard. If someone outbids you, you can easily top up your bid by paying only the difference to reclaim your spot.

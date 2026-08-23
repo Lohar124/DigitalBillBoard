@@ -29,7 +29,7 @@ export function AppSidebar() {
     <Sidebar>
       <SidebarHeader className="p-4">
         <Link href="/" className="font-bold text-xl tracking-tight">
-          Everybid
+          Digital Billboard
         </Link>
       </SidebarHeader>
       <SidebarContent>

@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://everybid.lol';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.vercel.app';
   const supabase = getSupabaseServerClient();
 
   // 1. Handle Sponsor Slot checkout ($49 / 30 days)
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
         name: entryName,
         amount_cents: String(amountCents),
         charge_amount_cents: String(chargeAmountCents),
-        description: `Everybid listing: ${entryName}`,
+        description: `Digital Billboard listing: ${entryName}`,
       },
     });
 

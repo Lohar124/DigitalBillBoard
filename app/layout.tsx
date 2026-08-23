@@ -15,23 +15,23 @@ const fontMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: 'Everybid · The Public Pay-to-Rank Leaderboard',
-    template: '%s | Everybid',
+    default: 'Digital Billboard · The Public Pay-to-Rank Leaderboard',
+    template: '%s | Digital Billboard',
   },
   description:
-    'Everybid is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
-  keywords: ['leaderboard', 'pay to rank', 'product directory', 'rankings', 'everybid'],
+    'Digital Billboard is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
+  keywords: ['leaderboard', 'pay to rank', 'digital billboard', 'billboard', 'product directory', 'rankings'],
   openGraph: {
-    title: 'Everybid · The Public Pay-to-Rank Leaderboard',
+    title: 'Digital Billboard · The Public Pay-to-Rank Leaderboard',
     description:
-      'Everybid is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
+      'Digital Billboard is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Everybid · The Public Pay-to-Rank Leaderboard',
+    title: 'Digital Billboard · The Public Pay-to-Rank Leaderboard',
     description:
-      'Everybid is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
+      'Digital Billboard is a real-time public leaderboard for websites, products, and builders. Place a bid to claim your rank and get discovered.',
   },
 };
 

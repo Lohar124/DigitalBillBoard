@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.vercel.app';
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.lol';
   const supabase = getSupabaseServerClient();
 
   // 1. Handle Sponsor Slot checkout ($49 / 30 days)

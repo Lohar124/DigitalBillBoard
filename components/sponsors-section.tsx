@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, ExternalLink, Sparkles, X, Loader2, Globe } from 'lucide-react';
+import { Plus, ExternalLink, Sparkles, X, Loader2, Globe, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
@@ -36,10 +36,10 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
       `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
 
     return (
-      <div className="group relative rounded-2xl border border-border/90 bg-card p-3.5 sm:p-4 hover:border-amber-500/40 transition-all flex flex-col justify-between gap-2.5 shadow-2xs w-full text-left">
+      <div className="group relative rounded-2xl border border-amber-500/30 dark:border-amber-500/20 bg-card/90 dark:bg-card/70 p-3.5 sm:p-4 hover:border-amber-500/60 hover:shadow-md hover:shadow-amber-500/10 transition-all flex flex-col justify-between gap-2.5 shadow-xs w-full text-left backdrop-blur-md">
         <div className="flex items-start gap-3">
           {/* Logo */}
-          <div className="size-10 rounded-xl bg-muted/70 border border-border/60 flex items-center justify-center shrink-0 overflow-hidden mt-0.5">
+          <div className="size-10 rounded-xl bg-muted/80 border border-border/80 flex items-center justify-center shrink-0 overflow-hidden mt-0.5 shadow-2xs">
             <img
               src={logoSrc}
               alt={slot.name || hostname}
@@ -54,10 +54,10 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
           {/* Info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-1.5">
-              <h4 className="font-bold text-xs sm:text-sm text-foreground truncate">
+              <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-primary transition-colors">
                 {slot.name || hostname}
               </h4>
-              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300/50">
+              <span className="shrink-0 text-[9px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 rounded-md border border-amber-500/30">
                 SPONSOR
               </span>
             </div>
@@ -69,15 +69,16 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-1.5 border-t border-border/40 text-[11px]">
-          <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold">
+        <div className="flex items-center justify-between pt-2 border-t border-border/50 text-[11px]">
+          <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold flex items-center gap-1">
+            <span className="size-1.5 rounded-full bg-amber-500"></span>
             {slot.days_left ? `${slot.days_left}d left` : '30d left'}
           </span>
           <a
             href={slot.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-mono text-muted-foreground hover:text-foreground transition-colors group-hover:text-primary"
+            className="inline-flex items-center gap-1 font-mono font-medium text-muted-foreground hover:text-foreground transition-colors group-hover:text-primary"
           >
             visit <ExternalLink className="size-3" />
           </a>
@@ -88,15 +89,15 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
 
   // Available Empty Slot
   return (
-    <div className="rounded-2xl border border-dashed border-border/90 bg-card/40 hover:bg-card/70 hover:border-amber-500/40 p-3.5 sm:p-4 transition-all flex items-center justify-between gap-3 group w-full">
+    <div className="rounded-2xl border border-dashed border-border/90 dark:border-border/60 bg-card/40 hover:bg-card/80 hover:border-amber-500/50 p-3.5 sm:p-4 transition-all flex items-center justify-between gap-3 group w-full backdrop-blur-xs">
       <div className="flex items-center gap-3 min-w-0">
         {/* Plus Icon Box */}
-        <div className="size-9 sm:size-10 rounded-xl border border-dashed border-border/80 flex items-center justify-center text-muted-foreground/80 group-hover:text-amber-500 group-hover:border-amber-500/40 transition-colors shrink-0">
+        <div className="size-9 sm:size-10 rounded-xl border border-dashed border-border/90 flex items-center justify-center text-muted-foreground/70 group-hover:text-amber-500 group-hover:border-amber-500/50 group-hover:scale-105 transition-all shrink-0">
           <Plus className="size-4" />
         </div>
 
         <div className="min-w-0">
-          <h4 className="font-bold text-xs sm:text-sm text-foreground truncate">
+          <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
             Slot #{slot.slot_number}
           </h4>
           <p className="text-[11px] font-mono text-muted-foreground mt-0.5">
@@ -109,9 +110,10 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
       <button
         type="button"
         onClick={() => onClaim(slot.slot_number)}
-        className="inline-flex items-center gap-1 bg-amber-100/90 dark:bg-amber-950/50 hover:bg-amber-200 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-300 border border-amber-300/60 dark:border-amber-700/50 font-semibold px-3 py-1 rounded-xl text-xs transition-all shadow-2xs active:scale-95 cursor-pointer shrink-0"
+        className="inline-flex items-center gap-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold px-3 py-1.5 rounded-xl text-xs transition-all shadow-2xs hover:scale-105 active:scale-95 cursor-pointer shrink-0"
       >
-        Claim →
+        Claim
+        <ArrowRight className="size-3" />
       </button>
     </div>
   );
@@ -249,39 +251,39 @@ export function ClaimSponsorModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-150">
-      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-card/95 border border-border/80 rounded-3xl p-6 sm:p-7 shadow-2xl backdrop-blur-xl">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-muted-foreground hover:text-foreground size-8 rounded-lg flex items-center justify-center hover:bg-muted transition-colors cursor-pointer"
+          className="absolute top-5 right-5 text-muted-foreground hover:text-foreground size-8 rounded-full flex items-center justify-center hover:bg-muted transition-colors cursor-pointer"
         >
           <X className="size-4" />
         </button>
 
-        <div className="mb-5">
-          <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60 px-2.5 py-1 rounded-full border border-amber-300/40 mb-2">
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-3 py-1 rounded-full border border-amber-500/30 mb-3">
             <Sparkles className="size-3.5" />
-            Featured Sponsor Slot #{selectedSlot}
+            Billboard Sponsor Slot #{selectedSlot}
           </div>
-          <h3 className="text-xl font-bold tracking-tight">Claim Slot #{selectedSlot}</h3>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Your product will be prominently featured in Slot #{selectedSlot} for 30 consecutive days.
+          <h3 className="text-2xl font-black tracking-tight text-foreground">Claim Slot #{selectedSlot}</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 leading-relaxed">
+            Your website or brand will be featured in Billboard Slot #{selectedSlot} for 30 consecutive days.
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+            <label className="text-xs font-bold text-foreground flex items-center justify-between">
               <span>Website URL</span>
               {isFetchingMeta && (
                 <span className="text-[11px] text-muted-foreground flex items-center gap-1 font-normal">
-                  <Loader2 className="size-3 animate-spin" /> Auto-fetching info...
+                  <Loader2 className="size-3 animate-spin text-primary" /> Auto-fetching details...
                 </span>
               )}
             </label>
             <div className="relative">
-              <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <Input
                 type="text"
                 required
@@ -289,14 +291,14 @@ export function ClaimSponsorModal({
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 onBlur={handleUrlBlur}
-                className="pl-9 text-sm rounded-xl h-10"
+                className="pl-10 text-sm rounded-xl h-11 bg-muted/40 border-border/80"
                 disabled={isSubmitting}
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label className="text-xs font-bold text-foreground">
               Product / Company Name
             </label>
             <Input
@@ -305,13 +307,13 @@ export function ClaimSponsorModal({
               placeholder="e.g. Acme AI or SolveBase"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-sm rounded-xl h-10"
+              className="text-sm rounded-xl h-11 bg-muted/40 border-border/80"
               disabled={isSubmitting}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">
+            <label className="text-xs font-bold text-foreground">
               Tagline / Description (Max 140 chars)
             </label>
             <Input
@@ -321,26 +323,26 @@ export function ClaimSponsorModal({
               placeholder="e.g. Build controllable bots in seconds."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="text-sm rounded-xl h-10"
+              className="text-sm rounded-xl h-11 bg-muted/40 border-border/80"
               disabled={isSubmitting}
             />
           </div>
 
-          <div className="rounded-xl bg-muted/50 border border-border p-3 flex items-center justify-between text-xs sm:text-sm">
+          <div className="rounded-2xl bg-muted/60 border border-border/80 p-4 flex items-center justify-between text-xs sm:text-sm">
             <div>
-              <div className="font-semibold text-foreground">30 Days Placement</div>
-              <div className="text-muted-foreground text-xs">Sidebar Slot #{selectedSlot}</div>
+              <div className="font-bold text-foreground">30 Days Featured Placement</div>
+              <div className="text-muted-foreground text-xs">Tower Slot #{selectedSlot}</div>
             </div>
             <div className="text-right">
-              <div className="text-base font-bold text-amber-600 dark:text-amber-400 font-mono">
+              <div className="text-lg font-black text-amber-600 dark:text-amber-400 font-mono">
                 $49.00
               </div>
-              <div className="text-[11px] text-muted-foreground">one-time payment</div>
+              <div className="text-[11px] text-muted-foreground font-medium">one-time payment</div>
             </div>
           </div>
 
           {errorMessage && (
-            <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-2.5 rounded-xl">
+            <div className="text-xs text-destructive bg-destructive/10 border border-destructive/20 p-3 rounded-xl font-medium">
               {errorMessage}
             </div>
           )}
@@ -348,7 +350,7 @@ export function ClaimSponsorModal({
           <Button
             type="submit"
             disabled={isSubmitting}
-            className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 transition-all cursor-pointer"
+            className="w-full h-12 rounded-xl bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-600 hover:to-yellow-600 text-amber-950 font-black text-sm transition-all shadow-md shadow-amber-500/20 shimmer-btn cursor-pointer"
           >
             {isSubmitting ? (
               <span className="flex items-center gap-2">

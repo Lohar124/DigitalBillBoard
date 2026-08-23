@@ -14,7 +14,7 @@ import { LeaderboardList } from "@/components/leaderboard-list"
 import { Footer } from "@/components/footer"
 import { MobileLayout } from "@/components/mobile-layout"
 import type { LeaderboardItem } from "@/lib/leaderboard-data"
-import { Sparkles } from "lucide-react"
+import { Sparkles, Radio } from "lucide-react"
 
 export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null)
@@ -65,10 +65,9 @@ export default function Home() {
                 setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${data.slotNumber || slot || ''} for 30 days!`);
                 refreshSponsors();
               } else {
-                setSuccessMessage(`🎉 Successfully claimed spot on the leaderboard for ${data.url}!`);
+                setSuccessMessage(`🎉 Successfully claimed spot on the billboard for ${data.url}!`);
                 fetchLeaderboard();
               }
-              // Clean query param
               window.history.replaceState({}, document.title, window.location.pathname);
             }
           })
@@ -95,9 +94,9 @@ export default function Home() {
       <div className="min-h-screen flex flex-col overflow-x-hidden">
         <Header />
         <main className="flex-1">
-          <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-6 lg:py-8">
+          <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 py-6 lg:py-10">
             {successMessage && (
-              <div className="max-w-3xl mx-auto mb-6 p-4 rounded-xl bg-green-500/10 border border-green-500/30 text-green-600 dark:text-green-400 text-center font-medium text-sm">
+              <div className="max-w-3xl mx-auto mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-center font-bold text-sm shadow-sm backdrop-blur-md animate-in fade-in">
                 {successMessage}
               </div>
             )}
@@ -106,12 +105,12 @@ export default function Home() {
             <div className="xl:grid xl:grid-cols-[280px_minmax(0,1fr)_280px] 2xl:grid-cols-[310px_minmax(0,1fr)_310px] gap-6 lg:gap-8 items-start">
               
               {/* Left Column: Sponsor Slots 1 to 5 */}
-              <aside className="hidden xl:flex flex-col gap-3.5 sticky top-20">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 px-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="size-3 text-amber-500" /> Sponsors
+              <aside className="hidden xl:flex flex-col gap-3.5 sticky top-24">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1 flex items-center justify-between pb-1 border-b border-border/40">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Sparkles className="size-3.5 text-amber-500" /> Billboard Towers
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">$49 / 30d</span>
+                  <span className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">$49 / 30d</span>
                 </div>
                 {slots.slice(0, 5).map((slot) => (
                   <SponsorSlotCard
@@ -132,21 +131,23 @@ export default function Home() {
                   items={items}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6 mt-6 sm:mt-8">
                   <TrendingSection items={items} isLoading={isLoading} />
                   <LatestActivity items={items} isLoading={isLoading} />
                 </div>
 
                 {/* Mobile / Tablet Sponsors Grid (< xl screens) */}
                 <div className="xl:hidden mt-10">
-                  <div className="flex items-center justify-between gap-2 mb-4 px-1">
+                  <div className="flex items-center justify-between gap-2 mb-4 px-1 pb-2 border-b border-border/40">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold">Featured Sponsors</h3>
-                      <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-100 dark:bg-amber-950/70 text-amber-800 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300/50">
+                      <h3 className="text-base font-bold text-foreground flex items-center gap-1.5">
+                        <Sparkles className="size-4 text-amber-500" /> Featured Billboard Towers
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/30">
                         10 Slots
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground font-mono">$49 / 30 days</span>
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-mono font-bold">$49 / 30 days</span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                     {slots.map((slot) => (
@@ -160,7 +161,7 @@ export default function Home() {
                 </div>
 
                 {/* Main Leaderboard */}
-                <div className="mt-10">
+                <div className="mt-10 sm:mt-12">
                   <LeaderboardList
                     items={items}
                     isLoading={isLoading}
@@ -170,12 +171,12 @@ export default function Home() {
               </div>
 
               {/* Right Column: Sponsor Slots 6 to 10 */}
-              <aside className="hidden xl:flex flex-col gap-3.5 sticky top-20">
-                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground/80 px-1 flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="size-3 text-amber-500" /> Sponsors
+              <aside className="hidden xl:flex flex-col gap-3.5 sticky top-24">
+                <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-1 flex items-center justify-between pb-1 border-b border-border/40">
+                  <span className="flex items-center gap-1.5 text-foreground">
+                    <Sparkles className="size-3.5 text-amber-500" /> Billboard Towers
                   </span>
-                  <span className="text-[10px] font-mono text-muted-foreground">$49 / 30d</span>
+                  <span className="text-[10px] font-mono font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">$49 / 30d</span>
                 </div>
                 {slots.slice(5, 10).map((slot) => (
                   <SponsorSlotCard

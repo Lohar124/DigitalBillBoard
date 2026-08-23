@@ -3,7 +3,7 @@
 import { useState, forwardRef, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus } from 'lucide-react';
+import { Globe, Minus, Plus, Sparkles, Zap, ShieldCheck, ArrowRight } from 'lucide-react';
 
 const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
   <svg
@@ -41,10 +41,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
   const [totalVisits, setTotalVisits] = useState<number | null>(null);
 
-  // Prevents React dev mode double-firing page view increment
   const hasTrackedRef = useRef(false);
 
-  // Real-time visitor presence heartbeat with persistent unique browser token
   useEffect(() => {
     let sessionId = '';
     if (typeof window !== 'undefined') {
@@ -82,7 +80,6 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
     return () => clearInterval(interval);
   }, []);
 
-  // Sync default bid when items load if user hasn't selected a custom bid
   useEffect(() => {
     if (selectedBid) {
       setBid(selectedBid);
@@ -131,7 +128,6 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
     onBidChange?.(newBid);
   };
 
-  // Calculate what rank this bid amount will achieve on the board
   const calculatedRank =
     items.length > 0 ? items.filter((i) => i.bid >= bid).length + 1 : 1;
   const displayRank = selectedRank || calculatedRank;
@@ -139,35 +135,48 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   const isHandle = url.startsWith('@');
 
   return (
-    <section className="text-center overflow-hidden">
-      <div className="inline-flex items-center gap-2 bg-muted/60 dark:bg-muted/40 border border-border/40 px-3.5 py-1.5 rounded-full text-xs mb-6 min-h-[30px]">
-        <span className="relative flex size-2">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75"></span>
-          <span className="relative inline-flex size-2 rounded-full bg-emerald-500"></span>
+    <section className="text-center pt-2 pb-6 sm:py-8 relative">
+      {/* Top Live Pill */}
+      <div className="inline-flex items-center gap-2.5 bg-card/80 dark:bg-card/60 backdrop-blur-md border border-border/80 px-4 py-1.5 rounded-full text-xs mb-6 shadow-xs hover:border-primary/40 transition-colors">
+        <span className="relative flex size-2.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500"></span>
         </span>
         {onlineCount !== null && totalVisits !== null ? (
-          <>
+          <div className="flex items-center gap-2">
             <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-              {onlineCount.toLocaleString()} online
+              {onlineCount.toLocaleString()} Live Now
             </span>
-            <span className="text-muted-foreground/60">·</span>
-            <span className="text-muted-foreground font-normal">
-              {totalVisits.toLocaleString()} visitors since launch
+            <span className="text-muted-foreground/40 font-light">•</span>
+            <span className="text-muted-foreground font-medium">
+              {totalVisits.toLocaleString()} visitors
             </span>
-          </>
+          </div>
         ) : (
-          <span className="text-muted-foreground font-normal">Live board active</span>
+          <span className="text-foreground font-medium flex items-center gap-1.5">
+            <Sparkles className="size-3.5 text-amber-500" /> Live Digital Billboard Active
+          </span>
         )}
       </div>
-      <h1 className="text-3xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-        Claim #{displayRank} for{' '}
-        <div className="inline-flex items-center gap-1 sm:gap-2 text-primary align-middle justify-center flex-wrap">
+
+      {/* Main Attention-Grabbing Headline */}
+      <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.15] text-foreground">
+        Claim{' '}
+        <span className="relative inline-block px-2">
+          <span className="relative z-10 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            #{displayRank}
+          </span>
+          <span className="absolute inset-0 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-xl -rotate-1 scale-105 z-0" />
+        </span>{' '}
+        for{' '}
+        <div className="inline-flex items-center gap-1.5 sm:gap-2.5 text-primary align-middle justify-center flex-wrap mt-1 sm:mt-0">
           <button
             type="button"
             onClick={handleDecrease}
-            className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex-shrink-0"
+            className="inline-flex items-center justify-center size-9 sm:size-11 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 hover:scale-105 active:scale-95 transition-all shadow-xs"
+            aria-label="Decrease bid"
           >
-            <Minus className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Minus className="size-4 sm:size-5" />
           </button>
           <input
             type="text"
@@ -179,56 +188,78 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                 onBidChange?.(num);
               }
             }}
-            className="bg-transparent border-none outline-none text-primary text-center font-bold text-3xl sm:text-5xl md:text-6xl p-0 focus:ring-0 w-auto min-w-0"
+            className="bg-transparent border-none outline-none text-primary text-center font-black text-3xl sm:text-5xl md:text-6xl p-0 focus:ring-0 w-auto min-w-0 drop-shadow-sm"
             size={bidText.length}
           />
           <button
             type="button"
             onClick={handleIncrease}
-            className="inline-flex items-center justify-center size-8 sm:size-10 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors flex-shrink-0"
+            className="inline-flex items-center justify-center size-9 sm:size-11 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 hover:scale-105 active:scale-95 transition-all shadow-xs"
+            aria-label="Increase bid"
           >
-            <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+            <Plus className="size-4 sm:size-5" />
           </button>
         </div>
       </h1>
-      <p className="text-muted-foreground mt-3 text-base sm:text-lg max-w-3xl mx-auto px-4">
+
+      {/* Subtitle / Value Prop */}
+      <p className="text-muted-foreground mt-4 text-sm sm:text-base md:text-lg max-w-2xl mx-auto px-4 leading-relaxed font-normal">
         {displayRank === 1
           ? topBid > 0
-            ? `Beat the current #1 bid ($${topBid}) to take the top spot on the board.`
-            : 'Be the first to claim #1 on the leaderboard starting at $1.'
-          : `A bid of $${bid} will secure spot #${displayRank} on the leaderboard.`}
+            ? `Outbid the current #1 listing ($${topBid}) to dominate the top spot on the billboard.`
+            : 'Be the first to claim #1 on the digital billboard starting at just $1.'
+          : `A bid of $${bid} secures spot #${displayRank} on the public billboard.`}
       </p>
 
-      <div className="mt-8 max-w-lg mx-auto px-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1 min-w-0">
+      {/* Search / Claim Bar */}
+      <div className="mt-8 max-w-xl mx-auto px-4">
+        <div className="p-1.5 sm:p-2 rounded-2xl sm:rounded-full bg-card/90 dark:bg-card/70 border border-border/80 shadow-lg shadow-black/5 dark:shadow-indigo-950/20 backdrop-blur-xl flex flex-col sm:flex-row gap-2 transition-all focus-within:border-primary/60 focus-within:ring-4 focus-within:ring-primary/15">
+          <div className="relative flex-1 min-w-0 flex items-center">
             {isHandle ? (
-              <XIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <XIcon className="absolute left-4 size-5 text-muted-foreground pointer-events-none" />
             ) : (
-              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Globe className="absolute left-4 size-5 text-muted-foreground pointer-events-none" />
             )}
             <Input
               ref={ref}
               placeholder="Your product's URL or @handle"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="pl-11 h-12 text-base rounded-full min-w-0"
+              className="pl-11 pr-4 h-12 text-sm sm:text-base border-none shadow-none focus-visible:ring-0 bg-transparent rounded-full min-w-0"
             />
           </div>
           <Button
             size="lg"
-            className="h-12 px-8 rounded-full shrink-0"
+            className="h-12 px-7 rounded-xl sm:rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold shrink-0 shadow-md shadow-indigo-500/25 shimmer-btn hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             onClick={handleClaim}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Redirecting…' : 'Claim'}
+            {isSubmitting ? (
+              'Redirecting…'
+            ) : (
+              <>
+                Claim Billboard Spot
+                <ArrowRight className="size-4" />
+              </>
+            )}
           </Button>
         </div>
-        {error && <p className="text-xs text-destructive mt-2">{error}</p>}
-        <p className="text-xs text-muted-foreground mt-2">
-          Already on the list? Enter the same URL or @handle and up your bid — you only pay the
-          difference.
-        </p>
+
+        {error && (
+          <div className="p-2.5 mt-3 rounded-xl bg-destructive/10 border border-destructive/20 text-xs text-destructive text-center font-medium">
+            {error}
+          </div>
+        )}
+
+        {/* Value Highlights */}
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mt-4 text-[11px] sm:text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Zap className="size-3.5 text-amber-500" /> Instant live ranking
+          </span>
+          <span className="flex items-center gap-1">
+            <ShieldCheck className="size-3.5 text-emerald-500" /> Only pay difference to reclaim
+          </span>
+        </div>
       </div>
     </section>
   );

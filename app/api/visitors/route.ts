@@ -15,6 +15,7 @@ async function getVercelAnalyticsStats() {
 
   const token = process.env.VERCEL_AUTH_TOKEN;
   const projectId = process.env.VERCEL_PROJECT_ID;
+  const teamId = process.env.VERCEL_TEAM_ID;
 
   if (!token || !projectId) {
     return cachedVercelData;
@@ -25,8 +26,9 @@ async function getVercelAnalyticsStats() {
     const since = new Date(now - 28 * 24 * 60 * 60 * 1000).toISOString();
     const until = new Date(now + 24 * 60 * 60 * 1000).toISOString();
 
+    const teamParam = teamId ? `&teamId=${encodeURIComponent(teamId)}` : '';
     const res = await fetch(
-      `https://api.vercel.com/v1/query/web-analytics/visits/count?projectId=${projectId}&environment=production&since=${encodeURIComponent(since)}&until=${encodeURIComponent(until)}`,
+      `https://api.vercel.com/v1/query/web-analytics/visits/count?projectId=${projectId}&environment=production&since=${encodeURIComponent(since)}&until=${encodeURIComponent(until)}${teamParam}`,
       {
         headers: {
           Authorization: `Bearer ${token}`,

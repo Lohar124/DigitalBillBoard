@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error('Dodo webhook processing error:', err);
     return NextResponse.json(
-      { error: 'Webhook processing failed', details: err?.message || String(err) },
+      { error: 'Webhook processing failed' },
       { status: 400 }
     );
   }

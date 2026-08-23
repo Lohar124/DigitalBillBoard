@@ -3,6 +3,47 @@ import { NextRequest, NextResponse } from 'next/server';
 // Real-time presence tracker for live online users
 const activeSessions = new Map<string, number>();
 const ACTIVE_TIMEOUT_MS = 45 * 1000;
+const MAX_SESSIONS = 5_000; // Cap to prevent memory exhaustion
+
+// ── Rate Limiting for heartbeat POSTs (max 1 per IP per 10 seconds) ──
+const heartbeatRateMap = new Map<string, number>();
+const HEARTBEAT_RATE_WINDOW_MS = 10 * 1000;
+const MAX_HEARTBEAT_ENTRIES = 5_000;
+
+function isHeartbeatRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const last = heartbeatRateMap.get(ip);
+
+  if (last && now - last < HEARTBEAT_RATE_WINDOW_MS) {
+    return true;
+  }
+
+  // Evict expired entries periodically
+  if (heartbeatRateMap.size >= MAX_HEARTBEAT_ENTRIES) {
+    for (const [key, ts] of heartbeatRateMap.entries()) {
+      if (now - ts > HEARTBEAT_RATE_WINDOW_MS) {
+        heartbeatRateMap.delete(key);
+      }
+    }
+    // If still full, evict oldest
+    if (heartbeatRateMap.size >= MAX_HEARTBEAT_ENTRIES) {
+      const firstKey = heartbeatRateMap.keys().next().value;
+      if (firstKey) heartbeatRateMap.delete(firstKey);
+    }
+  }
+
+  heartbeatRateMap.set(ip, now);
+  return false;
+}
+
+function cleanupSessions() {
+  const now = Date.now();
+  for (const [id, lastSeen] of activeSessions.entries()) {
+    if (now - lastSeen > ACTIVE_TIMEOUT_MS) {
+      activeSessions.delete(id);
+    }
+  }
+}
 
 // In-memory cache for Vercel official analytics to ensure ultra-fast response times
 let cachedVercelData: { visitors: number; pageviews: number; timestamp: number } | null = null;
@@ -58,18 +99,41 @@ async function getVercelAnalyticsStats() {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => ({}));
+  // Rate limit heartbeat requests
   const forwardedFor = request.headers.get('x-forwarded-for');
   const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
+
+  if (isHeartbeatRateLimited(ip)) {
+    // Still return data, just don't register a new session ping
+    const vercelStats = await getVercelAnalyticsStats();
+    const totalVisitors = vercelStats ? vercelStats.visitors : Math.max(1, activeSessions.size);
+    return NextResponse.json({
+      online: Math.max(1, activeSessions.size),
+      totalVisits: totalVisitors,
+    });
+  }
+
+  const body = await request.json().catch(() => ({}));
   const sessionId = body?.session_id ? `client_${body.session_id}` : `ip_${ip}`;
 
   const now = Date.now();
-  activeSessions.set(sessionId, now);
-  for (const [id, lastSeen] of activeSessions.entries()) {
-    if (now - lastSeen > ACTIVE_TIMEOUT_MS) {
-      activeSessions.delete(id);
+
+  // Cap active sessions map size
+  if (activeSessions.size >= MAX_SESSIONS && !activeSessions.has(sessionId)) {
+    cleanupSessions();
+    // If still at capacity after cleanup, skip adding
+    if (activeSessions.size >= MAX_SESSIONS) {
+      const vercelStats = await getVercelAnalyticsStats();
+      const totalVisitors = vercelStats ? vercelStats.visitors : Math.max(1, activeSessions.size);
+      return NextResponse.json({
+        online: Math.max(1, activeSessions.size),
+        totalVisits: totalVisitors,
+      });
     }
   }
+
+  activeSessions.set(sessionId, now);
+  cleanupSessions();
 
   const vercelStats = await getVercelAnalyticsStats();
   const totalVisitors = vercelStats ? vercelStats.visitors : Math.max(1, activeSessions.size);
@@ -81,6 +145,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
+  cleanupSessions();
+
   const vercelStats = await getVercelAnalyticsStats();
   const totalVisitors = vercelStats ? vercelStats.visitors : Math.max(1, activeSessions.size);
 

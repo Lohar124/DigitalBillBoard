@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
   } catch (err: any) {
     console.error('Verify payment error:', err);
     return NextResponse.json(
-      { error: err?.message || String(err) },
+      { error: 'Payment verification failed' },
       { status: 500 }
     );
   }

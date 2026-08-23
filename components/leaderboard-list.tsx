@@ -12,7 +12,7 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
-import { Trophy, Sparkles } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -75,34 +75,29 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
 
   return (
     <div>
-      {/* Leaderboard Section Header */}
-      <div className="flex items-center justify-between gap-3 mb-4 px-1">
-        <div className="flex items-center gap-2">
-          <div className="size-7 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-500">
-            <Trophy className="size-4" />
-          </div>
-          <h2 className="text-lg font-black tracking-tight text-foreground">
-            Official Billboard Standings
-          </h2>
-        </div>
-        <div className="text-xs font-mono font-semibold text-muted-foreground bg-muted/60 px-2.5 py-1 rounded-full border border-border/60">
-          {items.length} Active Listings
-        </div>
+      {/* Section Header */}
+      <div className="flex items-center justify-between gap-3 mb-3 px-1">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+          Leaderboard
+        </h2>
+        <span className="text-xs font-mono text-muted-foreground">
+          {items.length} listings
+        </span>
       </div>
 
-      <div className="space-y-3 sm:space-y-4">
+      <div className="space-y-2.5 sm:space-y-3">
         {isLoading || isPageChanging ? (
           Array.from({ length: 3 }).map((_, i) => (
             <LeaderboardCardSkeleton key={i} />
           ))
         ) : items.length === 0 ? (
-          <div className="text-center py-16 px-4 border border-dashed rounded-3xl border-border bg-card/40 backdrop-blur-md">
-            <div className="inline-flex size-14 rounded-2xl bg-amber-500/10 items-center justify-center mb-4 text-amber-500 border border-amber-500/20">
-              <Trophy className="size-7" />
+          <div className="text-center py-16 px-4 border border-dashed rounded-xl border-border bg-card">
+            <div className="inline-flex size-10 rounded-full bg-muted items-center justify-center mb-3 text-muted-foreground">
+              <Trophy className="size-5" />
             </div>
-            <h3 className="text-xl font-bold">No listings on the billboard yet</h3>
-            <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
-              Be the very first to claim #1 on the digital billboard starting at $1!
+            <h3 className="text-base font-semibold text-foreground">No listings on the board yet</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+              Be the first to claim #1 on the leaderboard using the form above.
             </p>
           </div>
         ) : (

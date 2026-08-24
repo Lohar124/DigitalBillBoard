@@ -100,14 +100,27 @@ export default function Home() {
           .catch(() => {});
       } else if (sponsorClaimed) {
         const sNum = slot ? Number(slot) : 1;
+        const claimUrl = params.get('url') || `Sponsor Slot #${sNum}`;
         setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${sNum} for 30 days!`);
         refreshSponsors();
         setCelebrationData({
           isOpen: true,
-          url: `Sponsor Slot #${sNum}`,
+          url: claimUrl,
           isSponsor: true,
           slotNumber: sNum,
           bidAmount: 49,
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (params.get('claimed')) {
+        const claimUrl = params.get('url') || 'your website';
+        const claimBid = params.get('bid') ? Number(params.get('bid')) : undefined;
+        setSuccessMessage(`🎉 Successfully claimed spot on the leaderboard for ${claimUrl}!`);
+        fetchLeaderboard();
+        setCelebrationData({
+          isOpen: true,
+          url: claimUrl,
+          bidAmount: claimBid,
+          isSponsor: false,
         });
         window.history.replaceState({}, document.title, window.location.pathname);
       }

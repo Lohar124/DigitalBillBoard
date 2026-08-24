@@ -141,11 +141,13 @@ export async function POST(request: NextRequest) {
             },
             { onConflict: 'slot_number' }
           );
-        } catch {}
+        } catch (dbErr) {
+          console.error('Supabase sponsor free claim error:', dbErr);
+        }
 
         return NextResponse.json({
           freeClaim: true,
-          checkoutUrl: `/?sponsor_claimed=1&slot=${slotNumber}`,
+          checkoutUrl: `/?sponsor_claimed=1&slot=${slotNumber}&url=${encodeURIComponent(url)}`,
         });
       }
 
@@ -230,11 +232,13 @@ export async function POST(request: NextRequest) {
           { onConflict: 'url' }
         );
         await invalidateLeaderboardCache();
-      } catch {}
+      } catch (dbErr) {
+        console.error('Supabase leaderboard free claim error:', dbErr);
+      }
 
       return NextResponse.json({
         freeClaim: true,
-        checkoutUrl: `/?claimed=1`,
+        checkoutUrl: `/?claimed=1&url=${encodeURIComponent(url)}&bid=${bid}`,
       });
     }
 

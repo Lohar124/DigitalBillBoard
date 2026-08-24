@@ -84,9 +84,14 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
     fetchMeta();
   }, [item.url]);
 
-  const title = meta?.title || item.name;
+  let parsedHostname = '';
+  try {
+    parsedHostname = new URL(item.url).hostname;
+  } catch {}
+
+  const title = item.name && item.name !== parsedHostname ? item.name : meta?.title || item.name;
   const description = item.description || meta?.description || '';
-  const favicon = meta?.favicon || `https://www.google.com/s2/favicons?domain=${item.name}&sz=64`;
+  const favicon = meta?.favicon || `https://www.google.com/s2/favicons?domain=${parsedHostname || 'instagram.com'}&sz=128`;
   const categoryId = item.category || meta?.category || 'other';
   const categoryDef = getCategoryById(categoryId);
 

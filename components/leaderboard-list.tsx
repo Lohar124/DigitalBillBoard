@@ -12,11 +12,20 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
-import { Trophy, Search, Flame, Clock, TrendingUp, X } from 'lucide-react';
+import { Trophy, Search, Flame, Clock, X, Tag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const ITEMS_PER_PAGE = 10;
 type FilterTab = 'top' | 'clicked' | 'recent';
+
+const CATEGORIES = [
+  { id: 'all', label: 'All' },
+  { id: 'ai', label: '⚡ AI Tools' },
+  { id: 'dev', label: '🛠️ DevTools' },
+  { id: 'saas', label: '💼 SaaS' },
+  { id: 'indie', label: '🚀 Indie' },
+  { id: 'design', label: '🎨 Design' },
+];
 
 interface LeaderboardListProps {
   onClaimClick?: (rank: number, bid: number) => void;
@@ -30,6 +39,7 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
   const [internalItems, setInternalItems] = useState<LeaderboardItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FilterTab>('top');
+  const [activeCategory, setActiveCategory] = useState('all');
   const prevPage = useRef(currentPage);
 
   useEffect(() => {
@@ -57,7 +67,7 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
   const isLoading = propIsLoading !== undefined ? propIsLoading : internalLoading;
   const rawItems = propItems !== undefined ? propItems : internalItems;
 
-  // Filter and Sort items based on search query and active tab
+  // Filter and Sort items based on search query, category, and active tab
   const filteredAndSortedItems = useMemo(() => {
     let result = [...rawItems];
 
@@ -69,11 +79,24 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
       );
     }
 
+    // Category filter (simple keyword match on name/url)
+    if (activeCategory !== 'all') {
+      const cat = activeCategory.toLowerCase();
+      result = result.filter((i) => {
+        const text = `${i.name} ${i.url}`.toLowerCase();
+        if (cat === 'ai') return text.includes('ai') || text.includes('gpt') || text.includes('llm') || text.includes('bot');
+        if (cat === 'dev') return text.includes('dev') || text.includes('code') || text.includes('git') || text.includes('api');
+        if (cat === 'saas') return text.includes('app') || text.includes('io') || text.includes('cloud');
+        if (cat === 'indie') return text.includes('indie') || text.includes('build') || text.includes('launch');
+        if (cat === 'design') return text.includes('design') || text.includes('ui') || text.includes('art');
+        return true;
+      });
+    }
+
     // Sort by tab
     if (activeTab === 'clicked') {
       result.sort((a, b) => b.clicks - a.clicks);
     } else if (activeTab === 'recent') {
-      // Recent order: by reverse original rank or recent activity
       result.sort((a, b) => (b.time === 'just now' ? 1 : 0) - (a.time === 'just now' ? 1 : 0));
     } else {
       // Default: Top bids
@@ -81,12 +104,12 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
     }
 
     return result;
-  }, [rawItems, searchQuery, activeTab]);
+  }, [rawItems, searchQuery, activeCategory, activeTab]);
 
   // Reset page when search or tab changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeCategory, activeTab]);
 
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedItems.length / ITEMS_PER_PAGE));
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -111,8 +134,8 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
 
   return (
     <div>
-      {/* Section Header & Search / Filter Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 px-1">
+      {/* Section Header & Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 px-1">
         <div>
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <span>Leaderboard</span>
@@ -123,7 +146,7 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border text-xs">
+        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border text-xs self-start sm:self-auto">
           <button
             type="button"
             onClick={() => setActiveTab('top')}
@@ -163,25 +186,46 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
         </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative mb-3.5">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="Search listings by name or domain..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9 pr-9 h-9 text-xs bg-card border-border rounded-xl"
-        />
-        {searchQuery && (
-          <button
-            type="button"
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
-          >
-            <X className="size-3.5" />
-          </button>
-        )}
+      {/* Category Pills & Search Bar */}
+      <div className="space-y-2.5 mb-4">
+        {/* Category Pills */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat.id}
+              type="button"
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
+                activeCategory === cat.id
+                  ? 'bg-foreground text-background border-foreground font-semibold'
+                  : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+            >
+              {cat.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search listings by name or domain..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 pr-9 h-9 text-xs bg-card border-border rounded-xl"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Listings List */}
@@ -196,20 +240,29 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
               {searchQuery ? <Search className="size-5" /> : <Trophy className="size-5" />}
             </div>
             <h3 className="text-base font-semibold text-foreground">
-              {searchQuery ? `No results for "${searchQuery}"` : 'No listings on the board yet'}
+              {searchQuery
+                ? `No results for "${searchQuery}"`
+                : activeCategory !== 'all'
+                ? `No listings in this category yet`
+                : 'No listings on the board yet'}
             </h3>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
               {searchQuery
-                ? 'Try searching with a different domain or clear the search query.'
+                ? 'Try searching with a different domain or clear the filter.'
+                : activeCategory !== 'all'
+                ? 'Be the first to claim a spot in this category!'
                 : 'Be the first to claim #1 on the leaderboard using the form above.'}
             </p>
-            {searchQuery && (
+            {(searchQuery || activeCategory !== 'all') && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => {
+                  setSearchQuery('');
+                  setActiveCategory('all');
+                }}
                 className="mt-3 text-xs font-medium text-foreground bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
               >
-                Clear Search
+                Reset Filters
               </button>
             )}
           </div>

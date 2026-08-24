@@ -4,7 +4,7 @@ import { useState, forwardRef, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus, Loader2, Sparkles, ArrowUpRight } from 'lucide-react';
+import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown } from 'lucide-react';
 
 const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
   <svg
@@ -194,6 +194,12 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
     onBidChange?.(newBid);
   };
 
+  const applyPreset = (amount: number) => {
+    const target = Math.max(1, Math.min(100000, amount));
+    setBid(target);
+    onBidChange?.(target);
+  };
+
   const calculatedRank =
     items.length > 0 ? items.filter((i) => i.bid >= bid).length + 1 : 1;
   const displayRank = selectedRank || calculatedRank;
@@ -211,6 +217,9 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   });
 
   const upgradeCost = existingListing ? Math.max(0, bid - existingListing.bid) : bid;
+
+  // Estimated traffic calculation based on projected rank
+  const estimatedClicks = displayRank === 1 ? '1,500 - 3,000' : displayRank <= 3 ? '800 - 1,500' : '200 - 600';
 
   return (
     <section className="text-center py-4 sm:py-6">
@@ -263,6 +272,48 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
         </span>
       </h1>
 
+      {/* Quick Bid Preset Chips */}
+      <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3.5">
+        <button
+          type="button"
+          onClick={() => applyPreset(topBid > 0 ? topBid + 1 : 1)}
+          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1 ${
+            bid === (topBid > 0 ? topBid + 1 : 1)
+              ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-semibold'
+              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/80'
+          }`}
+        >
+          <Crown className="size-3 text-amber-500" />
+          <span>Top #1 (${topBid > 0 ? topBid + 1 : 1})</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => applyPreset(bid + 5)}
+          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <Zap className="size-3 text-emerald-500" />
+          <span>+$5 Boost</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => applyPreset(bid + 10)}
+          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer flex items-center gap-1"
+        >
+          <TrendingUp className="size-3 text-blue-500" />
+          <span>+$10 Dominator</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => applyPreset(25)}
+          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
+        >
+          $25 Spot
+        </button>
+      </div>
+
       <p className="text-muted-foreground mt-3 text-sm sm:text-base max-w-xl mx-auto px-4 leading-relaxed">
         {displayRank === 1
           ? topBid > 0
@@ -292,7 +343,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           </div>
           <Button
             size="lg"
-            className="h-11 px-6 rounded-xl font-semibold bg-foreground text-background hover:opacity-90 transition-opacity shrink-0 cursor-pointer"
+            className="h-11 px-6 rounded-xl font-semibold bg-foreground text-background hover:opacity-90 transition-opacity shrink-0 cursor-pointer shadow-xs"
             onClick={handleClaim}
             disabled={isSubmitting}
           >
@@ -306,41 +357,50 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           </Button>
         </div>
 
-        {/* Live URL Metadata Preview Card */}
+        {/* Live URL Metadata Preview Card with Traffic Estimator */}
         {urlPreview && (
-          <div className="mt-3 p-3 rounded-xl bg-card border border-border text-left flex items-center justify-between gap-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
-                <Image
-                  src={urlPreview.favicon}
-                  alt={urlPreview.title}
-                  width={16}
-                  height={16}
-                  className="size-4 object-contain"
-                  unoptimized
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-foreground truncate flex items-center gap-1">
-                  <span>{urlPreview.title}</span>
+          <div className="mt-3 p-3.5 rounded-xl bg-card border border-border text-left shadow-xs animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                  <Image
+                    src={urlPreview.favicon}
+                    alt={urlPreview.title}
+                    width={16}
+                    height={16}
+                    className="size-4 object-contain"
+                    unoptimized
+                  />
                 </div>
-                <div className="text-[11px] text-muted-foreground truncate font-mono">
-                  {urlPreview.hostname}
+                <div className="min-w-0">
+                  <div className="text-xs font-semibold text-foreground truncate">
+                    {urlPreview.title}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground truncate font-mono">
+                    {urlPreview.hostname}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-xs font-mono font-bold text-foreground">
+                  Rank #{displayRank}
+                </div>
+                <div className="text-[10px] font-mono text-muted-foreground">
+                  {existingListing ? `Pay $${upgradeCost} upgrade` : `$${bid} total`}
                 </div>
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <div className="text-xs font-mono font-bold text-foreground">
-                Rank #{displayRank}
-              </div>
-              <div className="text-[10px] font-mono text-muted-foreground">
-                {existingListing ? (
-                  <span>Pay ${upgradeCost} upgrade</span>
-                ) : (
-                  <span>${bid} total</span>
-                )}
-              </div>
+            {/* Micro Traffic Projection Metric */}
+            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Sparkles className="size-3 text-amber-500" />
+                <span>Estimated Exposure: <strong className="text-foreground font-medium font-mono">{estimatedClicks} views/mo</strong></span>
+              </span>
+              <span className="font-medium text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">
+                {displayRank === 1 ? '👑 Top Spotlight' : displayRank <= 3 ? '🔥 High Visibility' : '🟢 Verified Live'}
+              </span>
             </div>
           </div>
         )}

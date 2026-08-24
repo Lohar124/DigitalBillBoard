@@ -14,6 +14,7 @@ import { LeaderboardList } from "@/components/leaderboard-list"
 import { Footer } from "@/components/footer"
 import { MobileLayout } from "@/components/mobile-layout"
 import { ClaimSuccessModal } from "@/components/claim-success-modal"
+import { LiveTicker } from "@/components/live-ticker"
 import type { LeaderboardItem } from "@/lib/leaderboard-data"
 
 export default function Home() {
@@ -233,6 +234,8 @@ export default function Home() {
             slotNumber={celebrationData.slotNumber}
           />
         )}
+        {/* Floating Live Real-Time Activity Ticker */}
+        <LiveTicker items={items} />
       </div>
     </MobileLayout>
   )

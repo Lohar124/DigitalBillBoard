@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Trophy, Share2, Check, X, ExternalLink, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import confetti from 'canvas-confetti';
 
 interface ClaimSuccessModalProps {
   isOpen: boolean;
@@ -27,6 +28,20 @@ export function ClaimSuccessModal({
   slotNumber,
 }: ClaimSuccessModalProps) {
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      // Trigger festive celebration confetti
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#f59e0b', '#10b981', '#6366f1', '#ec4899', '#3b82f6'],
+        });
+      } catch {}
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -53,7 +68,7 @@ export function ClaimSuccessModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-2xl text-center">
+      <div className="relative w-full max-w-md bg-card border border-border rounded-2xl p-6 sm:p-7 shadow-2xl text-center animate-in zoom-in-95 duration-200">
         {/* Close Button */}
         <button
           type="button"

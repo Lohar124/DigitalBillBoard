@@ -4,7 +4,9 @@ import { useState, forwardRef, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown, Flame, ArrowUpRight } from 'lucide-react';
+import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown, Flame, ArrowUpRight, DollarSign, Layers, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import { CATEGORIES, getCategoryById } from '@/lib/categories';
+import type { LeaderboardItem } from '@/lib/leaderboard-data';
 
 const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
   <svg
@@ -17,8 +19,6 @@ const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
   </svg>
 );
-
-import type { LeaderboardItem } from '@/lib/leaderboard-data';
 
 interface HeroSectionProps {
   ref?: React.Ref<HTMLInputElement>;
@@ -33,6 +33,7 @@ interface UrlPreviewData {
   title: string;
   description: string;
   hostname: string;
+  category: string;
 }
 
 export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(function HeroSection(
@@ -40,10 +41,15 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   ref
 ) {
   const topBid = items.length > 0 ? items[0].bid : 0;
-  const defaultTopBid = topBid > 0 ? topBid + 1 : 1;
+  const defaultTopBid = topBid > 0 ? topBid + 1 : 5;
 
   const [url, setUrl] = useState('');
   const [bid, setBid] = useState(selectedBid || defaultTopBid);
+  const [customTitle, setCustomTitle] = useState('');
+  const [customDesc, setCustomDesc] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('devtools');
+  const [agreedToPolicy, setAgreedToPolicy] = useState(true);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
@@ -54,6 +60,10 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const hasTrackedRef = useRef(false);
+
+  // Calculate platform metrics
+  const totalVolume = items.reduce((sum, item) => sum + item.bid, 0);
+  const totalBidsCount = items.length;
 
   useEffect(() => {
     let sessionId = '';
@@ -94,8 +104,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
   useEffect(() => {
     if (selectedBid) {
-      setBid(selectedBid);
-    } else if (items.length > 0 && bid === 1 && topBid > 0) {
+      setBid(Math.max(5, selectedBid));
+    } else if (items.length > 0 && bid === 5 && topBid > 0) {
       setBid(topBid + 1);
     }
   }, [selectedBid, items, topBid]);
@@ -130,13 +140,18 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
             title: data.title || parsedHostname,
             description: data.description || '',
             hostname: parsedHostname,
+            category: data.category || 'devtools',
           });
+          if (!customTitle) setCustomTitle(data.title || parsedHostname);
+          if (!customDesc) setCustomDesc(data.description || '');
+          if (data.category) setSelectedCategory(data.category);
         } else {
           setUrlPreview({
             favicon: `https://www.google.com/s2/favicons?domain=${parsedHostname}&sz=64`,
             title: parsedHostname,
             description: '',
             hostname: parsedHostname,
+            category: 'devtools',
           });
         }
       } catch {
@@ -145,20 +160,30 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           title: parsedHostname,
           description: '',
           hostname: parsedHostname,
+          category: 'devtools',
         });
       } finally {
         setIsLoadingPreview(false);
       }
-    }, 500);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [url]);
 
   const handleClaim = async () => {
     if (!url.trim()) {
-      setError('Enter a URL or @handle first');
+      setError('Enter a website URL or @handle first');
       return;
     }
+    if (bid < 5) {
+      setError('Minimum starting bid is $5');
+      return;
+    }
+    if (!agreedToPolicy) {
+      setError('Please acknowledge that all bids are final and non-refundable');
+      return;
+    }
+
     const normalizedUrl = /^https?:\/\//.test(url) ? url : `https://${url.replace(/^@/, '')}`;
 
     setIsSubmitting(true);
@@ -167,7 +192,13 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: normalizedUrl, bid }),
+        body: JSON.stringify({
+          url: normalizedUrl,
+          bid,
+          name: customTitle || urlPreview?.title,
+          description: customDesc || urlPreview?.description,
+          category: selectedCategory,
+        }),
       });
       const data = await res.json().catch(() => null);
       if (!res.ok || !data?.checkoutUrl) {
@@ -183,7 +214,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   };
 
   const handleDecrease = () => {
-    const newBid = Math.max(1, bid - 1);
+    const newBid = Math.max(5, bid - 1);
     setBid(newBid);
     onBidChange?.(newBid);
   };
@@ -195,7 +226,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   };
 
   const applyPreset = (amount: number) => {
-    const target = Math.max(1, Math.min(100000, amount));
+    const target = Math.max(5, Math.min(100000, amount));
     setBid(target);
     onBidChange?.(target);
   };
@@ -217,28 +248,43 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   });
 
   const upgradeCost = existingListing ? Math.max(0, bid - existingListing.bid) : bid;
-
-  // Estimated traffic calculation based on projected rank
   const estimatedClicks = displayRank === 1 ? '1,500 - 3,000' : displayRank <= 3 ? '800 - 1,500' : '200 - 600';
 
   return (
     <section className="text-center py-4 sm:py-6">
-      {/* Live Cumulative Social Proof Badge */}
-      <div className="inline-flex items-center gap-2 bg-muted/60 dark:bg-muted/40 border border-border/80 px-3.5 py-1 rounded-full text-xs mb-4 text-muted-foreground flex-wrap justify-center shadow-2xs">
-        <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-        {onlineCount !== null && totalVisits !== null ? (
-          <span>
-            <strong className="text-foreground font-semibold">{onlineCount}</strong> online ·{' '}
-            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visitors ·{' '}
-            <strong className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">2,840+</strong> clicks delivered
-          </span>
-        ) : (
-          <span>Live billboard active · 2,840+ clicks delivered</span>
-        )}
+      {/* Header Live Platform Stats Banner */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-xl mx-auto mb-6 px-3">
+        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase">Platform Vol</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-foreground mt-0.5">
+            ${totalVolume.toLocaleString()}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase">Total Bids</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-foreground mt-0.5">
+            {totalBidsCount} listings
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase">#1 Record</div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-amber-600 dark:text-amber-400 mt-0.5">
+            ${topBid}
+          </div>
+        </div>
+        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
+          <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-center gap-1">
+            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            <span>Online</span>
+          </div>
+          <div className="text-xs sm:text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
+            {onlineCount || 1} live
+          </div>
+        </div>
       </div>
 
       {/* Main Headline */}
-      <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-foreground">
+      <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground">
         Claim #{displayRank} for{' '}
         <span className="inline-flex items-center gap-1.5 align-middle">
           <button
@@ -254,12 +300,12 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
             value={bidText}
             onChange={(e) => {
               const num = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
-              if (!isNaN(num) && num >= 1 && num <= 100000) {
+              if (!isNaN(num) && num >= 5 && num <= 100000) {
                 setBid(num);
                 onBidChange?.(num);
               }
             }}
-            className="bg-transparent border-none outline-none text-foreground text-center font-extrabold text-3xl sm:text-5xl p-0 focus:ring-0 w-auto min-w-0"
+            className="bg-transparent border-none outline-none text-foreground text-center font-black text-3xl sm:text-5xl p-0 focus:ring-0 w-auto min-w-0"
             size={bidText.length}
           />
           <button
@@ -275,14 +321,14 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
       {/* Explicit Value Proposition Subtitle */}
       <p className="text-foreground/90 font-medium mt-2.5 text-sm sm:text-base max-w-xl mx-auto px-4 leading-relaxed">
-        Put your product in front of <span className="text-foreground font-bold underline decoration-amber-500/50 decoration-2">5,000+ tech founders, builders & indie hackers</span>.
+        Put your project in front of <span className="text-foreground font-bold underline decoration-amber-500/50 decoration-2">5,000+ tech founders, builders & indie hackers</span>.
       </p>
 
-      {/* 7-Day Bid Progression Sparkline (FOMO Trigger) */}
+      {/* 7-Day Bid Progression Sparkline */}
       <div className="inline-flex items-center gap-3 mt-3 px-3 py-1 rounded-xl bg-card border border-border/80 text-[11px] text-muted-foreground shadow-2xs">
         <span className="flex items-center gap-1 font-mono font-medium text-foreground">
           <TrendingUp className="size-3 text-emerald-500" />
-          <span>7d #1 Trend:</span>
+          <span>7d #1 Demand:</span>
         </span>
         <svg className="w-16 h-4 text-emerald-500" viewBox="0 0 64 16" fill="none">
           <path
@@ -294,7 +340,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           />
         </svg>
         <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
-          +2,900% Demand
+          +2,900% High FOMO
         </span>
       </div>
 
@@ -302,15 +348,15 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
       <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3.5">
         <button
           type="button"
-          onClick={() => applyPreset(topBid > 0 ? topBid + 1 : 1)}
+          onClick={() => applyPreset(topBid > 0 ? topBid + 1 : 5)}
           className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1 ${
-            bid === (topBid > 0 ? topBid + 1 : 1)
+            bid === (topBid > 0 ? topBid + 1 : 5)
               ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-semibold'
               : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/80'
           }`}
         >
           <Crown className="size-3 text-amber-500" />
-          <span>Top #1 (${topBid > 0 ? topBid + 1 : 1})</span>
+          <span>Top #1 (${topBid > 0 ? topBid + 1 : 5})</span>
         </button>
 
         <button
@@ -340,16 +386,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
         </button>
       </div>
 
-      <p className="text-muted-foreground mt-2 text-xs sm:text-sm max-w-xl mx-auto px-4">
-        {displayRank === 1
-          ? topBid > 0
-            ? `Top the #1 bid ($${topBid}) to take the highest spot on the board.`
-            : 'Be the first to claim #1 on the leaderboard starting at $1.'
-          : `A bid of $${bid} will secure spot #${displayRank} on the leaderboard.`}
-      </p>
-
-      {/* URL Input and Claim Button */}
-      <div className="mt-5 max-w-lg mx-auto px-4">
+      {/* URL Input and Submission Area */}
+      <div className="mt-5 max-w-lg mx-auto px-4 text-left">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1 min-w-0">
             {isLoadingPreview ? (
@@ -369,7 +407,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           </div>
           <Button
             size="lg"
-            className="h-11 px-6 rounded-xl font-semibold bg-foreground text-background hover:opacity-90 transition-opacity shrink-0 cursor-pointer shadow-xs"
+            className="h-11 px-6 rounded-xl font-bold bg-foreground text-background hover:opacity-90 transition-opacity shrink-0 cursor-pointer shadow-xs"
             onClick={handleClaim}
             disabled={isSubmitting}
           >
@@ -378,14 +416,14 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                 <Loader2 className="size-4 animate-spin" /> Redirecting...
               </span>
             ) : (
-              'Claim'
+              `Claim #${displayRank}`
             )}
           </Button>
         </div>
 
-        {/* Live URL Metadata Preview Card with Traffic Estimator */}
+        {/* Live Auto-Scraped Card Preview with Category Selector */}
         {urlPreview && (
-          <div className="mt-3 p-3.5 rounded-xl bg-card border border-border text-left shadow-xs animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="mt-3 p-4 rounded-2xl bg-card border border-border text-left shadow-xs space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
@@ -399,8 +437,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                   />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-foreground truncate">
-                    {urlPreview.title}
+                  <div className="text-xs font-bold text-foreground truncate">
+                    {customTitle || urlPreview.title}
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate font-mono">
                     {urlPreview.hostname}
@@ -418,21 +456,71 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
               </div>
             </div>
 
-            {/* Micro Traffic Projection Metric */}
-            <div className="mt-2.5 pt-2 border-t border-border/60 flex items-center justify-between text-[11px] text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <Sparkles className="size-3 text-amber-500" />
-                <span>Estimated Exposure: <strong className="text-foreground font-medium font-mono">{estimatedClicks} views/mo</strong></span>
-              </span>
-              <span className="font-medium text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">
-                {displayRank === 1 ? '👑 Top Spotlight' : displayRank <= 3 ? '🔥 High Visibility' : '🟢 Verified Live'}
-              </span>
+            {/* Custom Description & Category Selector */}
+            <div className="space-y-2 pt-1 border-t border-border/60">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Title / Brand</label>
+                  <Input
+                    value={customTitle}
+                    onChange={(e) => setCustomTitle(e.target.value)}
+                    placeholder="Website or Brand Name"
+                    className="h-8 text-xs bg-background rounded-lg border-border mt-0.5"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
+                    <span>Category</span>
+                    <span className="text-[9px] text-amber-500 font-mono">AI Auto-Tagged</span>
+                  </label>
+                  <select
+                    value={selectedCategory}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    className="h-8 w-full text-xs bg-background rounded-lg border border-border px-2 text-foreground mt-0.5 outline-none"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.icon} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Tagline / Description</label>
+                <Input
+                  value={customDesc}
+                  onChange={(e) => setCustomDesc(e.target.value)}
+                  placeholder="Short tagline (max 150 chars)"
+                  maxLength={150}
+                  className="h-8 text-xs bg-background rounded-lg border-border mt-0.5"
+                />
+              </div>
+            </div>
+
+            {/* Policy Agreement Checkbox */}
+            <div className="pt-2 border-t border-border/60">
+              <label
+                onClick={() => setAgreedToPolicy(!agreedToPolicy)}
+                className="flex items-start gap-2 text-[11px] text-muted-foreground cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={agreedToPolicy}
+                  onChange={(e) => setAgreedToPolicy(e.target.checked)}
+                  className="mt-0.5 rounded border-border size-3.5 accent-foreground cursor-pointer"
+                />
+                <span>
+                  I understand all bids are <strong className="text-foreground">final and non-refundable</strong> immediately upon placement on the billboard.
+                </span>
+              </label>
             </div>
           </div>
         )}
 
         {error && <p className="text-xs text-destructive mt-2">{error}</p>}
-        <p className="text-xs text-muted-foreground mt-2.5">
+        <p className="text-xs text-muted-foreground mt-2.5 text-center">
           Already listed? Enter the same URL or @handle to increase your bid — you only pay the difference.
         </p>
       </div>

@@ -32,7 +32,6 @@ const BLOCKED_DOMAINS = new Set([
   'shorturl.at',
   'cutt.ly',
   'rebrand.ly',
-  'shorturl.at',
   'v.gd',
 ]);
 
@@ -85,6 +84,8 @@ export async function POST(request: NextRequest) {
     const type: string = body?.type || 'leaderboard';
     const rawUrl: string | undefined = body?.url;
     const name: string | undefined = body?.name;
+    const category: string = body?.category || 'other';
+    const description: string = (body?.description || '').slice(0, 300);
 
     if (!rawUrl) {
       return NextResponse.json({ error: 'A URL is required' }, { status: 400 });
@@ -109,7 +110,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid slot number (must be 1-10)' }, { status: 400 });
       }
 
-      const description: string = (body?.description || '').slice(0, 300);
       const logoUrl: string = body?.logo_url || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
       const entryName = (name || hostname).slice(0, 100);
 
@@ -202,9 +202,10 @@ export async function POST(request: NextRequest) {
 
     // ── 2. Handle Leaderboard Bid checkout ─────────────────────────
     const bid: number | undefined = body?.bid;
-    if (!bid || bid < 1 || !Number.isFinite(bid) || bid > 100000) {
+    // Enforce $5 minimum starting bid
+    if (!bid || bid < 5 || !Number.isFinite(bid) || bid > 100000) {
       return NextResponse.json(
-        { error: 'A bid between $1 and $100,000 is required' },
+        { error: 'A minimum bid of $5 (up to $100,000) is required' },
         { status: 400 }
       );
     }
@@ -218,19 +219,36 @@ export async function POST(request: NextRequest) {
         url,
         name: entryName,
         bid_cents: amountCents,
+        category,
+        description,
       });
 
       try {
         const supabase = getSupabaseServerClient();
-        await supabase.from('leaderboard_entries').upsert(
+        const { error } = await supabase.from('leaderboard_entries').upsert(
           {
             url,
             name: entryName,
             bid_cents: amountCents,
+            category,
+            description,
             claimed_at: new Date().toISOString(),
           },
           { onConflict: 'url' }
         );
+
+        if (error) {
+          // Schema cache fallback (if category/description columns not yet in DB)
+          await supabase.from('leaderboard_entries').upsert(
+            {
+              url,
+              name: entryName,
+              bid_cents: amountCents,
+              claimed_at: new Date().toISOString(),
+            },
+            { onConflict: 'url' }
+          );
+        }
         await invalidateLeaderboardCache();
       } catch (dbErr) {
         console.error('Supabase leaderboard free claim error:', dbErr);
@@ -281,13 +299,14 @@ export async function POST(request: NextRequest) {
     const customId = encodeCustomId({
       t: 'lb',
       u: url,
-      n: entryName.slice(0, 30),
+      n: entryName.slice(0, 25),
+      c: category.slice(0, 15),
       a: String(amountCents),
     });
 
     const order = await createOrder({
       amountUsd: chargeAmountUsd,
-      description: `Digital Billboard: ${entryName}`,
+      description: `Digital Billboard: ${entryName} (Rank Bid)`,
       customId,
       returnUrl: `${siteUrl}/?claimed=1`,
       cancelUrl: `${siteUrl}/?cancelled=1`,
@@ -306,6 +325,8 @@ export async function POST(request: NextRequest) {
           type: 'leaderboard',
           url,
           name: entryName,
+          category,
+          description,
           amount_cents: amountCents,
           charge_amount_cents: chargeAmountCents,
         }),

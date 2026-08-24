@@ -12,20 +12,12 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
-import { Trophy, Search, Flame, Clock, X, Tag } from 'lucide-react';
+import { CATEGORIES } from '@/lib/categories';
+import { Trophy, Search, Flame, Clock, X, Layers, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 const ITEMS_PER_PAGE = 10;
 type FilterTab = 'top' | 'clicked' | 'recent';
-
-const CATEGORIES = [
-  { id: 'all', label: 'All' },
-  { id: 'ai', label: '⚡ AI Tools' },
-  { id: 'dev', label: '🛠️ DevTools' },
-  { id: 'saas', label: '💼 SaaS' },
-  { id: 'indie', label: '🚀 Indie' },
-  { id: 'design', label: '🎨 Design' },
-];
 
 interface LeaderboardListProps {
   onClaimClick?: (rank: number, bid: number) => void;
@@ -75,21 +67,24 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
-        (i) => i.name.toLowerCase().includes(q) || i.url.toLowerCase().includes(q)
+        (i) =>
+          i.name.toLowerCase().includes(q) ||
+          i.url.toLowerCase().includes(q) ||
+          (i.description && i.description.toLowerCase().includes(q))
       );
     }
 
-    // Category filter (simple keyword match on name/url)
+    // 25+ Category filter
     if (activeCategory !== 'all') {
-      const cat = activeCategory.toLowerCase();
       result = result.filter((i) => {
-        const text = `${i.name} ${i.url}`.toLowerCase();
-        if (cat === 'ai') return text.includes('ai') || text.includes('gpt') || text.includes('llm') || text.includes('bot');
-        if (cat === 'dev') return text.includes('dev') || text.includes('code') || text.includes('git') || text.includes('api');
-        if (cat === 'saas') return text.includes('app') || text.includes('io') || text.includes('cloud');
-        if (cat === 'indie') return text.includes('indie') || text.includes('build') || text.includes('launch');
-        if (cat === 'design') return text.includes('design') || text.includes('ui') || text.includes('art');
-        return true;
+        if (i.category === activeCategory) return true;
+        // Fallback keyword matching
+        const catDef = CATEGORIES.find((c) => c.id === activeCategory);
+        if (catDef) {
+          const text = `${i.name} ${i.url} ${i.description || ''}`.toLowerCase();
+          return catDef.keywords.some((kw) => text.includes(kw.toLowerCase()));
+        }
+        return false;
       });
     }
 
@@ -99,212 +94,253 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
     } else if (activeTab === 'recent') {
       result.sort((a, b) => (b.time === 'just now' ? 1 : 0) - (a.time === 'just now' ? 1 : 0));
     } else {
-      // Default: Top bids
+      // Top Bids (default)
       result.sort((a, b) => b.bid - a.bid);
     }
 
     return result;
   }, [rawItems, searchQuery, activeCategory, activeTab]);
 
-  // Reset page when search or tab changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, activeCategory, activeTab]);
-
   const totalPages = Math.max(1, Math.ceil(filteredAndSortedItems.length / ITEMS_PER_PAGE));
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentItems = filteredAndSortedItems.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const validPage = Math.min(currentPage, totalPages);
 
-  const [isPageChanging, setIsPageChanging] = useState(false);
+  const paginatedItems = useMemo(() => {
+    const start = (validPage - 1) * ITEMS_PER_PAGE;
+    return filteredAndSortedItems.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredAndSortedItems, validPage]);
 
-  useEffect(() => {
-    if (prevPage.current !== currentPage) {
-      setIsPageChanging(true);
-      const timer = setTimeout(() => setIsPageChanging(false), 200);
-      prevPage.current = currentPage;
-      return () => clearTimeout(timer);
-    }
-  }, [currentPage]);
-
-  const handleClaimClick = (rank: number, bid: number) => {
-    if (onClaimClick) {
-      onClaimClick(rank, bid);
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
 
-  return (
-    <div>
-      {/* Section Header & Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 px-1">
-        <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <span>Leaderboard</span>
-            <span className="text-xs font-mono font-normal text-muted-foreground/80 bg-muted px-2 py-0.5 rounded-full border border-border">
-              {filteredAndSortedItems.length} {filteredAndSortedItems.length === 1 ? 'listing' : 'listings'}
-            </span>
-          </h2>
-        </div>
+  const handleClaimClick = (rank: number, bid: number) => {
+    onClaimClick?.(rank, bid);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
-        {/* Filter Tabs */}
-        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border text-xs self-start sm:self-auto">
+  // Category counts
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: rawItems.length };
+    for (const cat of CATEGORIES) {
+      counts[cat.id] = rawItems.filter((i) => {
+        if (i.category === cat.id) return true;
+        const text = `${i.name} ${i.url} ${i.description || ''}`.toLowerCase();
+        return cat.keywords.some((kw) => text.includes(kw.toLowerCase()));
+      }).length;
+    }
+    return counts;
+  }, [rawItems]);
+
+  return (
+    <section className="space-y-4 text-left">
+      {/* 25+ Category Filter Navigation Pills (Sticky Horizontal Scroll) */}
+      <div className="relative">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none text-xs no-scrollbar">
           <button
             type="button"
-            onClick={() => setActiveTab('top')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              activeTab === 'top'
-                ? 'bg-card text-foreground shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground'
+            onClick={() => {
+              setActiveCategory('all');
+              setCurrentPage(1);
+            }}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+              activeCategory === 'all'
+                ? 'bg-foreground text-background border-foreground font-bold'
+                : 'bg-card text-muted-foreground hover:text-foreground border-border hover:bg-muted'
             }`}
           >
-            <Trophy className="size-3" />
-            <span>Top Bids</span>
+            <Layers className="size-3" />
+            <span>Global Feed ({categoryCounts['all'] || 0})</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('clicked')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              activeTab === 'clicked'
-                ? 'bg-card text-foreground shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Flame className="size-3" />
-            <span>Most Clicked</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('recent')}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-              activeTab === 'recent'
-                ? 'bg-card text-foreground shadow-2xs'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            <Clock className="size-3" />
-            <span>Recent</span>
-          </button>
+
+          {CATEGORIES.map((cat) => {
+            const count = categoryCounts[cat.id] || 0;
+            const isActive = activeCategory === cat.id;
+
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setActiveCategory(cat.id);
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium shrink-0 transition-all cursor-pointer flex items-center gap-1.5 border shadow-2xs ${
+                  isActive
+                    ? 'bg-foreground text-background border-foreground font-semibold'
+                    : 'bg-card text-muted-foreground hover:text-foreground border-border hover:bg-muted'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.name}</span>
+                {count > 0 && (
+                  <span
+                    className={`text-[10px] font-mono px-1 rounded-full ${
+                      isActive ? 'bg-background/20 text-background' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Category Pills & Search Bar */}
-      <div className="space-y-2.5 mb-4">
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar text-xs">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setActiveCategory(cat.id)}
-              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer shrink-0 ${
-                activeCategory === cat.id
-                  ? 'bg-foreground text-background border-foreground font-semibold'
-                  : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
-            >
-              {cat.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+      {/* Control Bar: Search Input & Filter Tabs */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-1">
+        {/* Search Field */}
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <Input
-            type="text"
-            placeholder="Search listings by name or domain..."
+            placeholder="Search tools, URLs, keywords..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-9 h-9 text-xs bg-card border-border rounded-xl"
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-8.5 pr-8 h-9 text-xs bg-card border-border rounded-xl"
           />
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground flex items-center justify-center cursor-pointer"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
             >
               <X className="size-3.5" />
             </button>
           )}
         </div>
+
+        {/* Sort Tabs */}
+        <div className="inline-flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/80 shrink-0 self-start sm:self-auto text-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('top')}
+            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              activeTab === 'top'
+                ? 'bg-card text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Trophy className="size-3 text-amber-500" />
+            <span>Top Bids</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('clicked')}
+            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              activeTab === 'clicked'
+                ? 'bg-card text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Flame className="size-3 text-orange-500" />
+            <span>Most Clicked</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('recent')}
+            className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+              activeTab === 'recent'
+                ? 'bg-card text-foreground shadow-2xs font-semibold'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Clock className="size-3 text-blue-500" />
+            <span>Recent</span>
+          </button>
+        </div>
       </div>
 
-      {/* Listings List */}
-      <div className="space-y-2.5 sm:space-y-3">
-        {isLoading || isPageChanging ? (
-          Array.from({ length: 3 }).map((_, i) => (
+      {/* Leaderboard Cards List */}
+      <div className="space-y-3 pt-1">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
             <LeaderboardCardSkeleton key={i} />
           ))
-        ) : filteredAndSortedItems.length === 0 ? (
-          <div className="text-center py-14 px-4 border border-dashed rounded-xl border-border bg-card">
-            <div className="inline-flex size-10 rounded-full bg-muted items-center justify-center mb-3 text-muted-foreground">
-              {searchQuery ? <Search className="size-5" /> : <Trophy className="size-5" />}
-            </div>
-            <h3 className="text-base font-semibold text-foreground">
-              {searchQuery
-                ? `No results for "${searchQuery}"`
-                : activeCategory !== 'all'
-                ? `No listings in this category yet`
-                : 'No listings on the board yet'}
-            </h3>
+        ) : paginatedItems.length > 0 ? (
+          paginatedItems.map((item) => (
+            <LeaderboardCard
+              key={item.url}
+              item={item}
+              onClaimClick={handleClaimClick}
+            />
+          ))
+        ) : (
+          <div className="text-center py-12 border border-dashed border-border rounded-2xl p-6 bg-card/40">
+            <Trophy className="size-8 text-muted-foreground/50 mx-auto mb-2" />
+            <h4 className="text-sm font-semibold text-foreground">No listings found in this category</h4>
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
               {searchQuery
-                ? 'Try searching with a different domain or clear the filter.'
-                : activeCategory !== 'all'
-                ? 'Be the first to claim a spot in this category!'
-                : 'Be the first to claim #1 on the leaderboard using the form above.'}
+                ? `No tools matched "${searchQuery}". Try a different search.`
+                : 'Be the first to claim #1 in this category starting at $5!'}
             </p>
-            {(searchQuery || activeCategory !== 'all') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchQuery('');
-                  setActiveCategory('all');
-                }}
-                className="mt-3 text-xs font-medium text-foreground bg-muted hover:bg-muted/80 px-3 py-1.5 rounded-lg border border-border transition-colors cursor-pointer"
-              >
-                Reset Filters
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => {
+                setActiveCategory('all');
+                setSearchQuery('');
+              }}
+              className="mt-3 text-xs font-semibold text-foreground bg-muted hover:bg-muted/80 border border-border px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+            >
+              Reset Filters
+            </button>
           </div>
-        ) : (
-          currentItems.map((item) => (
-            <LeaderboardCard key={item.rank} item={item} onClaimClick={handleClaimClick} />
-          ))
         )}
       </div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <Pagination className="mt-8">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
-              />
-            </PaginationItem>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <PaginationItem key={page}>
-                <PaginationLink
-                  isActive={page === currentPage}
-                  onClick={() => setCurrentPage(page)}
-                  className="cursor-pointer"
-                >
-                  {page}
-                </PaginationLink>
+        <div className="pt-3 flex justify-center">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(validPage - 1);
+                  }}
+                  className={validPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
               </PaginationItem>
-            ))}
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className={
-                  currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'
-                }
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    href="#"
+                    isActive={page === validPage}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePageChange(page);
+                    }}
+                    className="cursor-pointer"
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handlePageChange(validPage + 1);
+                  }}
+                  className={validPage >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
-    </div>
+    </section>
   );
 }

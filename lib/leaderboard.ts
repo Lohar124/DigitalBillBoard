@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
-import type { LeaderboardItem } from '@/lib/leaderboard-data';
+import type { LeaderboardItem, PlatformStats } from '@/lib/leaderboard-data';
+import { autoCategorizeWebsite } from '@/lib/categories';
 
 const CACHE_TTL_SECONDS = 0;
 
@@ -10,6 +11,9 @@ let localFallbackEntries: Array<{
   bid_cents: number;
   clicks: number;
   claimed_at: string;
+  category?: string;
+  description?: string;
+  is_hidden?: boolean;
 }> = [];
 
 // In-memory cache to prevent excessive database hits
@@ -19,6 +23,8 @@ export async function addLocalLeaderboardEntry(entry: {
   url: string;
   name: string;
   bid_cents: number;
+  category?: string;
+  description?: string;
 }) {
   const existingIdx = localFallbackEntries.findIndex((e) => e.url === entry.url);
   const record = {
@@ -27,6 +33,9 @@ export async function addLocalLeaderboardEntry(entry: {
     bid_cents: entry.bid_cents,
     clicks: existingIdx >= 0 ? localFallbackEntries[existingIdx].clicks : 0,
     claimed_at: new Date().toISOString(),
+    category: entry.category || 'other',
+    description: entry.description || '',
+    is_hidden: false,
   };
 
   if (existingIdx >= 0) {
@@ -53,7 +62,11 @@ export async function getLeaderboard(): Promise<LeaderboardItem[]> {
   } catch (e) {
     // If Supabase table is not yet created, use local fallback entries
     items = localFallbackEntries
-      .sort((a, b) => b.bid_cents - a.bid_cents)
+      .filter((r) => !r.is_hidden)
+      .sort((a, b) => {
+        if (b.bid_cents !== a.bid_cents) return b.bid_cents - a.bid_cents;
+        return new Date(a.claimed_at).getTime() - new Date(b.claimed_at).getTime();
+      })
       .map((row, index) => ({
         rank: index + 1,
         name: row.name,
@@ -61,6 +74,9 @@ export async function getLeaderboard(): Promise<LeaderboardItem[]> {
         url: row.url,
         clicks: row.clicks,
         time: formatRelativeTime(row.claimed_at),
+        category: row.category || 'other',
+        description: row.description || '',
+        claimed_at: row.claimed_at,
       }));
   }
 
@@ -81,7 +97,7 @@ async function fetchLeaderboardFromDatabase(): Promise<LeaderboardItem[]> {
   const supabase = getSupabaseServerClient();
   const { data, error } = await supabase
     .from('leaderboard_entries')
-    .select('url, name, bid_cents, clicks, claimed_at')
+    .select('*')
     .order('bid_cents', { ascending: false })
     .order('claimed_at', { ascending: true });
 
@@ -96,19 +112,42 @@ async function fetchLeaderboardFromDatabase(): Promise<LeaderboardItem[]> {
     }
   }
 
-  merged.sort((a, b) => b.bid_cents - a.bid_cents);
+  // Filter out hidden entries and apply strict tie-breaker (bid_cents DESC, claimed_at ASC)
+  const visible = merged.filter((r) => !r.is_hidden);
+  visible.sort((a, b) => {
+    if (b.bid_cents !== a.bid_cents) return b.bid_cents - a.bid_cents;
+    return new Date(a.claimed_at).getTime() - new Date(b.claimed_at).getTime();
+  });
 
-  return merged.map((row, index) => ({
+  return visible.map((row, index) => ({
     rank: index + 1,
     name: row.name,
     bid: row.bid_cents / 100,
     url: row.url,
     clicks: row.clicks || 0,
     time: formatRelativeTime(row.claimed_at),
+    category: row.category || autoCategorizeWebsite(`${row.name} ${row.url} ${row.description || ''}`),
+    description: row.description || '',
+    claimed_at: row.claimed_at,
   }));
 }
 
+export async function getPlatformStats(): Promise<PlatformStats> {
+  const items = await getLeaderboard();
+  const totalVolume = items.reduce((sum, item) => sum + item.bid, 0);
+  const highestBid = items.length > 0 ? items[0].bid : 0;
+  const totalBids = items.length;
+
+  return {
+    totalVolume,
+    totalBids,
+    highestBid,
+    totalListings: items.length,
+  };
+}
+
 function formatRelativeTime(iso: string) {
+  if (!iso) return 'recently';
   const minutes = Math.floor((Date.now() - new Date(iso).getTime()) / 60_000);
   if (minutes < 1) return 'just now';
   if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;

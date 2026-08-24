@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
+import { autoCategorizeWebsite } from "@/lib/categories"
 
 interface MetaData {
   favicon: string
   title: string
   description: string
+  category: string
 }
 
 // In-memory cache for fetched metadata (lasts 1 hour)
@@ -74,7 +76,7 @@ async function fetchMetaData(url: string): Promise<MetaData> {
   try {
     hostname = new URL(url).hostname
   } catch {
-    return { favicon: '', title: url, description: '' }
+    return { favicon: '', title: url, description: '', category: 'other' }
   }
 
   const favicon = `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
@@ -93,7 +95,7 @@ async function fetchMetaData(url: string): Promise<MetaData> {
     if (location) {
       const check = isAllowedUrl(location)
       if (!check.ok) {
-        return { favicon, title: hostname, description: '' }
+        return { favicon, title: hostname, description: '', category: 'other' }
       }
     }
 
@@ -109,7 +111,8 @@ async function fetchMetaData(url: string): Promise<MetaData> {
       || safeHtml.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']description["']/i)
     const description = descMatch ? descMatch[1].trim() : ""
 
-    const result = { favicon, title, description }
+    const category = autoCategorizeWebsite(`${title} ${description} ${safeHtml} ${hostname}`);
+    const result = { favicon, title, description, category }
 
     // Evict oldest entries if cache is too large
     if (metaCache.size >= MAX_CACHE_SIZE) {
@@ -119,7 +122,8 @@ async function fetchMetaData(url: string): Promise<MetaData> {
     metaCache.set(url, { data: result, expiresAt: Date.now() + CACHE_TTL_MS })
     return result
   } catch {
-    const fallback = { favicon, title: hostname, description: "" }
+    const category = autoCategorizeWebsite(hostname);
+    const fallback = { favicon, title: hostname, description: "", category }
     if (metaCache.size >= MAX_CACHE_SIZE) {
       const firstKey = metaCache.keys().next().value
       if (firstKey) metaCache.delete(firstKey)

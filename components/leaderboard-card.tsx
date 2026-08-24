@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
-import { Clock, MousePointerClick, ArrowUpRight } from 'lucide-react';
+import { Clock, MousePointerClick, ArrowUpRight, Share2, Check } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { LeaderboardItem, MetaData } from '@/lib/leaderboard-data';
 import { cn } from '@/lib/utils';
@@ -49,6 +49,7 @@ interface LeaderboardCardProps {
 export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
   const [meta, setMeta] = useState<MetaData | null>(null);
   const [isHovered, setIsHovered] = useState(false);
+  const [copied, setCopied] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -77,6 +78,14 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: item.url }),
     }).catch(() => {});
+  };
+
+  const handleShareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const tweetText = `${title} is currently Rank #${item.rank} with $${item.bid} on @DigitalBillboard! 🚀\n\nCheck it out on https://digitalbillboard.lol`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -135,9 +144,18 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
               </div>
             </div>
 
-            {/* Bid Amount */}
-            <div className="flex-shrink-0 text-right">
-              <span className="font-mono font-bold text-sm sm:text-base text-foreground">
+            {/* Bid Amount & Quick Share */}
+            <div className="flex items-center gap-2 flex-shrink-0 text-right">
+              <button
+                type="button"
+                onClick={handleShareClick}
+                title="Share on X"
+                className="size-8 rounded-lg border border-border/80 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors opacity-0 group-hover/item:opacity-100 cursor-pointer"
+              >
+                <Share2 className="size-3.5" />
+              </button>
+
+              <span className="font-mono font-bold text-sm sm:text-base text-foreground min-w-[50px] text-right">
                 {formatBid(item.bid)}
               </span>
             </div>

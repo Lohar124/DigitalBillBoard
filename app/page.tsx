@@ -13,6 +13,7 @@ import {
 import { LeaderboardList } from "@/components/leaderboard-list"
 import { Footer } from "@/components/footer"
 import { MobileLayout } from "@/components/mobile-layout"
+import { ClaimSuccessModal } from "@/components/claim-success-modal"
 import type { LeaderboardItem } from "@/lib/leaderboard-data"
 
 export default function Home() {
@@ -26,6 +27,17 @@ export default function Home() {
   const [selectedSponsorSlot, setSelectedSponsorSlot] = useState<number | null>(null);
 
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Success Celebration Modal State
+  const [celebrationData, setCelebrationData] = useState<{
+    isOpen: boolean;
+    url: string;
+    name?: string;
+    rank?: number;
+    bidAmount?: number;
+    isSponsor?: boolean;
+    slotNumber?: number;
+  } | null>(null);
 
   const fetchLeaderboard = () => {
     setIsLoading(true);
@@ -61,19 +73,41 @@ export default function Home() {
           .then((data) => {
             if (data.success) {
               if (data.type === 'sponsor') {
-                setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${data.slotNumber || slot || ''} for 30 days!`);
+                const sNum = data.slotNumber || (slot ? Number(slot) : 1);
+                setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${sNum} for 30 days!`);
                 refreshSponsors();
+                setCelebrationData({
+                  isOpen: true,
+                  url: data.url || `Sponsor Slot #${sNum}`,
+                  isSponsor: true,
+                  slotNumber: sNum,
+                  bidAmount: 49,
+                });
               } else if (data.type !== 'already_processed') {
                 setSuccessMessage(`🎉 Successfully claimed spot on the leaderboard for ${data.url}!`);
                 fetchLeaderboard();
+                setCelebrationData({
+                  isOpen: true,
+                  url: data.url,
+                  bidAmount: data.amountCents ? data.amountCents / 100 : undefined,
+                  isSponsor: false,
+                });
               }
               window.history.replaceState({}, document.title, window.location.pathname);
             }
           })
           .catch(() => {});
       } else if (sponsorClaimed) {
-        setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${slot || ''} for 30 days!`);
+        const sNum = slot ? Number(slot) : 1;
+        setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${sNum} for 30 days!`);
         refreshSponsors();
+        setCelebrationData({
+          isOpen: true,
+          url: `Sponsor Slot #${sNum}`,
+          isSponsor: true,
+          slotNumber: sNum,
+          bidAmount: 49,
+        });
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
@@ -185,6 +219,20 @@ export default function Home() {
           selectedSlot={selectedSponsorSlot}
           onClose={() => setSelectedSponsorSlot(null)}
         />
+
+        {/* Viral Claim Celebration Modal */}
+        {celebrationData && (
+          <ClaimSuccessModal
+            isOpen={celebrationData.isOpen}
+            onClose={() => setCelebrationData(null)}
+            url={celebrationData.url}
+            name={celebrationData.name}
+            rank={celebrationData.rank}
+            bidAmount={celebrationData.bidAmount}
+            isSponsor={celebrationData.isSponsor}
+            slotNumber={celebrationData.slotNumber}
+          />
+        )}
       </div>
     </MobileLayout>
   )

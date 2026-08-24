@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, forwardRef, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus } from 'lucide-react';
+import { Globe, Minus, Plus, Loader2, Sparkles, ArrowUpRight } from 'lucide-react';
 
 const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
   <svg
@@ -27,6 +28,13 @@ interface HeroSectionProps {
   onBidChange?: (bid: number) => void;
 }
 
+interface UrlPreviewData {
+  favicon: string;
+  title: string;
+  description: string;
+  hostname: string;
+}
+
 export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(function HeroSection(
   { selectedRank, selectedBid, items = [], onBidChange },
   ref
@@ -40,6 +48,10 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   const [error, setError] = useState<string | null>(null);
   const [onlineCount, setOnlineCount] = useState<number | null>(null);
   const [totalVisits, setTotalVisits] = useState<number | null>(null);
+
+  // Live URL Metadata Preview State
+  const [urlPreview, setUrlPreview] = useState<UrlPreviewData | null>(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 
   const hasTrackedRef = useRef(false);
 
@@ -88,6 +100,60 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
     }
   }, [selectedBid, items, topBid]);
 
+  // Debounced URL metadata preview lookup
+  useEffect(() => {
+    const trimmed = url.trim();
+    if (!trimmed || trimmed.length < 3 || (!trimmed.includes('.') && !trimmed.startsWith('@'))) {
+      setUrlPreview(null);
+      setIsLoadingPreview(false);
+      return;
+    }
+
+    const normalizedUrl = /^https?:\/\//.test(trimmed) ? trimmed : `https://${trimmed.replace(/^@/, '')}`;
+
+    let parsedHostname = '';
+    try {
+      parsedHostname = new URL(normalizedUrl).hostname;
+    } catch {
+      setUrlPreview(null);
+      return;
+    }
+
+    setIsLoadingPreview(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/fetch-meta?url=${encodeURIComponent(normalizedUrl)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setUrlPreview({
+            favicon: data.favicon || `https://www.google.com/s2/favicons?domain=${parsedHostname}&sz=64`,
+            title: data.title || parsedHostname,
+            description: data.description || '',
+            hostname: parsedHostname,
+          });
+        } else {
+          setUrlPreview({
+            favicon: `https://www.google.com/s2/favicons?domain=${parsedHostname}&sz=64`,
+            title: parsedHostname,
+            description: '',
+            hostname: parsedHostname,
+          });
+        }
+      } catch {
+        setUrlPreview({
+          favicon: `https://www.google.com/s2/favicons?domain=${parsedHostname}&sz=64`,
+          title: parsedHostname,
+          description: '',
+          hostname: parsedHostname,
+        });
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [url]);
+
   const handleClaim = async () => {
     if (!url.trim()) {
       setError('Enter a URL or @handle first');
@@ -133,6 +199,18 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   const displayRank = selectedRank || calculatedRank;
   const bidText = `$${bid.toLocaleString()}`;
   const isHandle = url.startsWith('@');
+
+  // Check if this domain is already listed
+  const normalizedUrl = url.trim() ? (/^https?:\/\//.test(url) ? url : `https://${url.replace(/^@/, '')}`) : '';
+  const existingListing = items.find((i) => {
+    try {
+      return new URL(i.url).hostname === new URL(normalizedUrl).hostname;
+    } catch {
+      return false;
+    }
+  });
+
+  const upgradeCost = existingListing ? Math.max(0, bid - existingListing.bid) : bid;
 
   return (
     <section className="text-center py-4 sm:py-6">
@@ -197,7 +275,9 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
       <div className="mt-6 max-w-lg mx-auto px-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1 min-w-0">
-            {isHandle ? (
+            {isLoadingPreview ? (
+              <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+            ) : isHandle ? (
               <XIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             ) : (
               <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -216,9 +296,54 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
             onClick={handleClaim}
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Redirecting…' : 'Claim'}
+            {isSubmitting ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="size-4 animate-spin" /> Redirecting...
+              </span>
+            ) : (
+              'Claim'
+            )}
           </Button>
         </div>
+
+        {/* Live URL Metadata Preview Card */}
+        {urlPreview && (
+          <div className="mt-3 p-3 rounded-xl bg-card border border-border text-left flex items-center justify-between gap-3 shadow-2xs animate-in fade-in slide-in-from-top-1 duration-150">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                <Image
+                  src={urlPreview.favicon}
+                  alt={urlPreview.title}
+                  width={16}
+                  height={16}
+                  className="size-4 object-contain"
+                  unoptimized
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-semibold text-foreground truncate flex items-center gap-1">
+                  <span>{urlPreview.title}</span>
+                </div>
+                <div className="text-[11px] text-muted-foreground truncate font-mono">
+                  {urlPreview.hostname}
+                </div>
+              </div>
+            </div>
+
+            <div className="text-right shrink-0">
+              <div className="text-xs font-mono font-bold text-foreground">
+                Rank #{displayRank}
+              </div>
+              <div className="text-[10px] font-mono text-muted-foreground">
+                {existingListing ? (
+                  <span>Pay ${upgradeCost} upgrade</span>
+                ) : (
+                  <span>${bid} total</span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && <p className="text-xs text-destructive mt-2">{error}</p>}
         <p className="text-xs text-muted-foreground mt-2.5">

@@ -25,36 +25,29 @@ const DEPLOY_CHECK_USER_AGENTS = [
   'ia_archiver',
 ];
 
-// ── IP-based Rate Limiting (1 click per URL per IP per 60 seconds) ──
+// ── IP-based Rate Limiting ──────────────────────────────────────────
 const clickRateMap = new Map<string, number>();
-const CLICK_RATE_WINDOW_MS = 60 * 1000;
 const MAX_RATE_MAP_SIZE = 10_000;
 
 function isClickRateLimited(ip: string, url: string): boolean {
+  const isFreeMode = process.env.FREE_CLAIM_MODE === 'true' || process.env.NEXT_PUBLIC_FREE_CLAIM_MODE === 'true';
+  // Allow faster testing in free mode (3s window) vs production (30s window)
+  const windowMs = isFreeMode ? 3 * 1000 : 30 * 1000;
+
   const key = `${ip}::${url}`;
   const now = Date.now();
   const lastClick = clickRateMap.get(key);
 
-  if (lastClick && now - lastClick < CLICK_RATE_WINDOW_MS) {
+  if (lastClick && now - lastClick < windowMs) {
     return true; // Rate limited
   }
 
-  // Evict oldest entries if map is too large to prevent memory abuse
+  // Evict oldest entries if map is too large
   if (clickRateMap.size >= MAX_RATE_MAP_SIZE) {
-    let oldest = Infinity;
-    let oldestKey = '';
     for (const [k, ts] of clickRateMap.entries()) {
-      if (ts < oldest) {
-        oldest = ts;
-        oldestKey = k;
-      }
-      // Fast eviction: remove expired entries while iterating
-      if (now - ts > CLICK_RATE_WINDOW_MS) {
+      if (now - ts > windowMs) {
         clickRateMap.delete(k);
       }
-    }
-    if (clickRateMap.size >= MAX_RATE_MAP_SIZE && oldestKey) {
-      clickRateMap.delete(oldestKey);
     }
   }
 
@@ -72,18 +65,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  if (ua.length === 0) {
-    return NextResponse.json({ ok: true, counted: false });
-  }
-
   const body = await request.json().catch(() => null);
-  const url: string | undefined = body?.url;
+  const rawUrl: string | undefined = body?.url;
 
-  if (!url) {
+  if (!rawUrl) {
     return NextResponse.json({ error: 'url is required' }, { status: 400 });
   }
 
-  // Rate limit: 1 click per URL per IP per 60 seconds
+  // Normalize URL
+  const url = rawUrl.trim();
+  const urlWithoutSlash = url.replace(/\/+$/, '');
+  const urlWithSlash = `${urlWithoutSlash}/`;
+
+  // Rate limit check
   const forwardedFor = request.headers.get('x-forwarded-for');
   const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
 
@@ -91,16 +85,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, counted: false, reason: 'rate_limited' });
   }
 
-  const supabase = getSupabaseServerClient();
+  try {
+    const supabase = getSupabaseServerClient();
 
-  const { error } = await supabase.rpc('increment_clicks', { entry_url: url });
+    // 1. Try RPC increment function
+    await supabase.rpc('increment_clicks', { entry_url: url });
+    await supabase.rpc('increment_clicks', { entry_url: urlWithoutSlash });
 
-  if (error) {
+    // 2. Invalidate leaderboard cache so next fetch sees new click counts
+    await invalidateLeaderboardCache();
+
+    return NextResponse.json({ ok: true, counted: true });
+  } catch (error) {
     console.error('Click increment error:', error);
     return NextResponse.json({ error: 'Failed to record click' }, { status: 500 });
   }
-
-  await invalidateLeaderboardCache();
-
-  return NextResponse.json({ ok: true, counted: true });
 }

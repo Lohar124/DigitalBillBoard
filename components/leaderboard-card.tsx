@@ -52,8 +52,14 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [reactions, setReactions] = useState(0);
   const [hasReacted, setHasReacted] = useState(false);
+  const [clickCount, setClickCount] = useState(item.clicks);
+  const [justClicked, setJustClicked] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    setClickCount(item.clicks);
+  }, [item.clicks]);
 
   useEffect(() => {
     // Read local reactions from localStorage
@@ -84,11 +90,20 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
   const href = `${item.url}${item.url.includes('?') ? '&' : '?'}utm_source=digitalbillboard&utm_medium=leaderboard&utm_campaign=listings`;
 
   const handleClick = () => {
-    fetch('/api/click', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: item.url }),
-    }).catch(() => {});
+    // 1. Optimistic UI update
+    setClickCount((c) => c + 1);
+    setJustClicked(true);
+    setTimeout(() => setJustClicked(false), 1500);
+
+    // 2. Guaranteed server record with keepalive
+    try {
+      fetch('/api/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: item.url }),
+        keepalive: true,
+      }).catch(() => {});
+    } catch {}
   };
 
   const handleShareClick = (e: React.MouseEvent) => {
@@ -175,8 +190,10 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
                   <span>{item.time}</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <MousePointerClick className="size-3 text-muted-foreground/70" />
-                  <span>{item.clicks.toLocaleString()} clicks</span>
+                  <MousePointerClick className={cn('size-3 text-muted-foreground/70 transition-transform', justClicked && 'scale-125 text-emerald-500')} />
+                  <span className={cn('transition-colors', justClicked && 'text-emerald-600 dark:text-emerald-400 font-semibold')}>
+                    {clickCount.toLocaleString()} clicks
+                  </span>
                 </div>
               </div>
             </div>

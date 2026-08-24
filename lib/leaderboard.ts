@@ -1,7 +1,7 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
 
-const CACHE_TTL_SECONDS = 5;
+const CACHE_TTL_SECONDS = 0;
 
 // In-memory store fallback for free claim mode & instant responsiveness
 let localFallbackEntries: Array<{

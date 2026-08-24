@@ -135,7 +135,7 @@ export function useSponsorSlots() {
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchSponsors = () => {
-    fetch('/api/sponsors')
+    fetch(`/api/sponsors?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         if (Array.isArray(data?.slots)) {

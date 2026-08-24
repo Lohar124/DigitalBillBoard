@@ -25,6 +25,9 @@ export const localSponsorSlots: Map<number, {
   expires_at: string;
 }> = new Map();
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   const slots: SponsorSlot[] = Array.from({ length: 10 }, (_, i) => ({
     slot_number: i + 1,
@@ -107,7 +110,9 @@ export async function GET() {
     { slots },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30',
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     }
   );

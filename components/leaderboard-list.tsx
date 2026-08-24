@@ -45,7 +45,7 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
   useEffect(() => {
     if (propItems !== undefined) return;
     let cancelled = false;
-    fetch('/api/leaderboard')
+    fetch(`/api/leaderboard?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         if (!cancelled) {

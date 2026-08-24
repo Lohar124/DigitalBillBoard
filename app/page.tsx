@@ -42,7 +42,7 @@ export default function Home() {
 
   const fetchLeaderboard = () => {
     setIsLoading(true);
-    fetch('/api/leaderboard')
+    fetch(`/api/leaderboard?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : Promise.reject()))
       .then((data) => {
         if (Array.isArray(data.items)) {

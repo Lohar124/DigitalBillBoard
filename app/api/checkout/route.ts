@@ -202,10 +202,10 @@ export async function POST(request: NextRequest) {
 
     // ── 2. Handle Leaderboard Bid checkout ─────────────────────────
     const bid: number | undefined = body?.bid;
-    // Enforce $5 minimum starting bid
-    if (!bid || bid < 5 || !Number.isFinite(bid) || bid > 100000) {
+    // Enforce $1 minimum starting bid
+    if (!bid || bid < 1 || !Number.isFinite(bid) || bid > 100000) {
       return NextResponse.json(
-        { error: 'A minimum bid of $5 (up to $100,000) is required' },
+        { error: 'A minimum bid of $1 (up to $100,000) is required' },
         { status: 400 }
       );
     }

@@ -279,7 +279,7 @@ export function LeaderboardList({ onClaimClick, items: propItems, isLoading: pro
             <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
               {searchQuery
                 ? `No tools matched "${searchQuery}". Try a different search.`
-                : 'Be the first to claim #1 in this category starting at $5!'}
+                : 'Be the first to claim #1 in this category starting at $1!'}
             </p>
             <button
               type="button"

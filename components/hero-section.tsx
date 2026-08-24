@@ -41,7 +41,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   ref
 ) {
   const topBid = items.length > 0 ? items[0].bid : 0;
-  const defaultTopBid = topBid > 0 ? topBid + 1 : 5;
+  const defaultTopBid = topBid > 0 ? topBid + 1 : 1;
 
   const [url, setUrl] = useState('');
   const [bid, setBid] = useState(selectedBid || defaultTopBid);
@@ -104,8 +104,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
   useEffect(() => {
     if (selectedBid) {
-      setBid(Math.max(5, selectedBid));
-    } else if (items.length > 0 && bid === 5 && topBid > 0) {
+      setBid(Math.max(1, selectedBid));
+    } else if (items.length > 0 && bid === 1 && topBid > 0) {
       setBid(topBid + 1);
     }
   }, [selectedBid, items, topBid]);
@@ -175,8 +175,8 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
       setError('Enter a website URL or @handle first');
       return;
     }
-    if (bid < 5) {
-      setError('Minimum starting bid is $5');
+    if (bid < 1) {
+      setError('Minimum starting bid is $1');
       return;
     }
     if (!agreedToPolicy) {
@@ -214,7 +214,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   };
 
   const handleDecrease = () => {
-    const newBid = Math.max(5, bid - 1);
+    const newBid = Math.max(1, bid - 1);
     setBid(newBid);
     onBidChange?.(newBid);
   };
@@ -226,7 +226,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   };
 
   const applyPreset = (amount: number) => {
-    const target = Math.max(5, Math.min(100000, amount));
+    const target = Math.max(1, Math.min(100000, amount));
     setBid(target);
     onBidChange?.(target);
   };
@@ -282,7 +282,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
             value={bidText}
             onChange={(e) => {
               const num = parseInt(e.target.value.replace(/[^0-9]/g, ''), 10);
-              if (!isNaN(num) && num >= 5 && num <= 100000) {
+              if (!isNaN(num) && num >= 1 && num <= 100000) {
                 setBid(num);
                 onBidChange?.(num);
               }
@@ -303,7 +303,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
       {/* Explanatory Subtitle */}
       <p className="text-muted-foreground mt-3 text-xs sm:text-sm max-w-lg mx-auto px-4 leading-relaxed">
-        <span className="text-foreground font-semibold">New spots start at $5.</span> Paying less than the #1 price still puts you on the board at whatever place that bid can take.
+        <span className="text-foreground font-semibold">New spots start at $1.</span> Paying less than the #1 price still puts you on the board at whatever place that bid can take.
       </p>
 
       {/* Main Claim Input Row with Inline Category Dropdown & Outbid Button */}

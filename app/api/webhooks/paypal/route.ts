@@ -1,20 +1,48 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { captureOrder } from '@/lib/paypal';
+import { verifyWebhookSignature } from '@/lib/paypal';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import { invalidateLeaderboardCache } from '@/lib/leaderboard';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => null);
-    const orderId = body?.order_id;
+    const rawBody = await request.text();
+    const headers = Object.fromEntries(request.headers.entries());
 
-    if (!orderId || typeof orderId !== 'string') {
-      return NextResponse.json({ error: 'order_id is required' }, { status: 400 });
+    // 1. Verify webhook signature (if webhook ID is configured)
+    const webhookId = process.env.PAYPAL_WEBHOOK_ID;
+    if (webhookId) {
+      const isValid = await verifyWebhookSignature({
+        webhookId,
+        headers,
+        body: rawBody,
+      });
+
+      if (!isValid) {
+        console.error('PayPal webhook signature verification failed');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+      }
+    }
+
+    const event = JSON.parse(rawBody);
+
+    // 2. Only process PAYMENT.CAPTURE.COMPLETED events
+    if (event.event_type !== 'PAYMENT.CAPTURE.COMPLETED') {
+      return NextResponse.json({ received: true, skipped: true });
+    }
+
+    const capture = event.resource;
+    const customId = capture?.custom_id;
+    // The PayPal order ID from supplementary_data
+    const orderId =
+      capture?.supplementary_data?.related_ids?.order_id || null;
+
+    if (!orderId && !customId) {
+      return NextResponse.json({ received: true, skipped: true });
     }
 
     const supabase = getSupabaseServerClient();
 
-    // 1. Look up the bid record by PayPal order ID to get full metadata
+    // 3. Look up the bid record by order ID
     const { data: bidRecord } = await supabase
       .from('bids')
       .select('*')
@@ -22,22 +50,16 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (!bidRecord) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      console.error('PayPal webhook: no bid found for order', orderId);
+      return NextResponse.json({ received: true, skipped: true });
     }
 
     // Already processed?
     if (bidRecord.status === 'paid') {
-      return NextResponse.json({ success: true, type: 'already_processed' });
+      return NextResponse.json({ received: true, already_processed: true });
     }
 
-    // 2. Capture the PayPal order (moves money)
-    const capture = await captureOrder(orderId);
-
-    if (capture.status !== 'COMPLETED') {
-      return NextResponse.json({ success: false, status: capture.status });
-    }
-
-    // 3. Parse metadata from the bid record
+    // 4. Parse metadata
     let metadata: {
       type?: string;
       slot_number?: number;
@@ -51,7 +73,6 @@ export async function POST(request: NextRequest) {
     try {
       metadata = JSON.parse(bidRecord.metadata || '{}');
     } catch {
-      // Fallback: use bid record fields directly
       metadata = {
         type: 'leaderboard',
         url: bidRecord.entry_url,
@@ -60,13 +81,13 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // 4. Mark bid as paid
+    // 5. Mark bid as paid
     await supabase
       .from('bids')
       .update({ status: 'paid' })
       .eq('polar_checkout_id', orderId);
 
-    // 5. Handle Sponsor Slot activation
+    // 6. Handle Sponsor Slot activation
     if (metadata.type === 'sponsor' && metadata.url && metadata.slot_number) {
       const slotNumber = Number(metadata.slot_number);
       const now = new Date();
@@ -88,17 +109,10 @@ export async function POST(request: NextRequest) {
         },
         { onConflict: 'slot_number' }
       );
-
-      return NextResponse.json({
-        success: true,
-        type: 'sponsor',
-        slotNumber,
-        url: metadata.url,
-      });
     }
 
-    // 6. Handle Leaderboard entry activation
-    if (metadata.url && metadata.amount_cents) {
+    // 7. Handle Leaderboard entry activation
+    if (metadata.type !== 'sponsor' && metadata.url && metadata.amount_cents) {
       const amountCents = Number(metadata.amount_cents);
 
       await supabase.from('leaderboard_entries').upsert(
@@ -112,20 +126,14 @@ export async function POST(request: NextRequest) {
       );
 
       await invalidateLeaderboardCache();
-      return NextResponse.json({
-        success: true,
-        type: 'leaderboard',
-        url: metadata.url,
-        amountCents,
-      });
     }
 
-    return NextResponse.json({ success: false, error: 'Missing metadata' });
+    return NextResponse.json({ received: true });
   } catch (err: any) {
-    console.error('Verify payment error:', err);
+    console.error('PayPal webhook processing error:', err);
     return NextResponse.json(
-      { error: 'Payment verification failed' },
-      { status: 500 }
+      { error: 'Webhook processing failed' },
+      { status: 400 }
     );
   }
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { dodo } from '@/lib/dodo';
+import { createOrder } from '@/lib/paypal';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 
 // ── URL Sanitization ───────────────────────────────────────────────
@@ -70,6 +70,11 @@ function sanitizeListingUrl(raw: string): { ok: true; url: string; hostname: str
 
   return { ok: true, url: cleanUrl, hostname: parsed.hostname };
 }
+
+// ── Encode metadata into PayPal custom_id (max 127 chars) ──────────
+function encodeCustomId(meta: Record<string, string>): string {
+  return JSON.stringify(meta).slice(0, 127);
+}
 // ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
@@ -91,8 +96,8 @@ export async function POST(request: NextRequest) {
   const url = urlCheck.url;
   const hostname = urlCheck.hostname;
 
-  const productId = process.env.DODO_PAYMENTS_PRODUCT_ID;
-  if (!productId) {
+  // Check PayPal is configured
+  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
     return NextResponse.json(
       { error: 'Payment system is not configured' },
       { status: 500 }
@@ -112,32 +117,46 @@ export async function POST(request: NextRequest) {
     const description: string = (body?.description || '').slice(0, 300);
     const logoUrl: string = body?.logo_url || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
     const entryName = (name || hostname).slice(0, 100);
-    const sponsorAmountCents = 4900; // $49.00
 
     try {
-      const session = await dodo.checkoutSessions.create({
-        product_cart: [
-          {
-            product_id: productId,
-            quantity: 1,
-            amount: sponsorAmountCents,
-          },
-        ],
-        return_url: `${siteUrl}/?sponsor_claimed=1&slot=${slotNumber}`,
-        metadata: {
+      const customId = encodeCustomId({
+        t: 'sponsor',
+        s: String(slotNumber),
+        u: url,
+        n: entryName.slice(0, 30),
+      });
+
+      const order = await createOrder({
+        amountUsd: '49.00',
+        description: `Sponsor Slot #${slotNumber} — 30 days`,
+        customId,
+        returnUrl: `${siteUrl}/?sponsor_claimed=1&slot=${slotNumber}`,
+        cancelUrl: `${siteUrl}/?cancelled=1`,
+      });
+
+      // Store full metadata in Supabase so we can recover it after payment
+      await supabase.from('bids').insert({
+        entry_url: url,
+        entry_name: entryName,
+        amount_cents: 4900,
+        polar_checkout_id: order.orderId,
+        status: 'pending',
+        metadata: JSON.stringify({
           type: 'sponsor',
-          slot_number: String(slotNumber),
+          slot_number: slotNumber,
           url,
           name: entryName,
           description,
           logo_url: logoUrl,
-          amount_cents: String(sponsorAmountCents),
-        },
+          amount_cents: 4900,
+        }),
+      }).then(({ error }) => {
+        if (error) console.error('Supabase sponsor bid insert error:', error);
       });
 
-      return NextResponse.json({ checkoutUrl: session.checkout_url });
+      return NextResponse.json({ checkoutUrl: order.approvalUrl });
     } catch (err: any) {
-      console.error('Dodo Payments sponsor checkout error:', err);
+      console.error('PayPal sponsor checkout error:', err);
       return NextResponse.json(
         { error: 'Failed to create checkout session' },
         { status: 500 }
@@ -173,34 +192,39 @@ export async function POST(request: NextRequest) {
 
   // Calculate charge amount (only pay the difference if already listed)
   const chargeAmountCents = existing ? amountCents - existing.bid_cents : amountCents;
+  const chargeAmountUsd = (chargeAmountCents / 100).toFixed(2);
   const entryName = (name || hostname).slice(0, 100);
 
   try {
-    const session = await dodo.checkoutSessions.create({
-      product_cart: [
-        {
-          product_id: productId,
-          quantity: 1,
-          amount: chargeAmountCents,
-        },
-      ],
-      return_url: `${siteUrl}/?claimed=1`,
-      metadata: {
-        type: 'leaderboard',
-        url,
-        name: entryName,
-        amount_cents: String(amountCents),
-        charge_amount_cents: String(chargeAmountCents),
-        description: `Digital Billboard listing: ${entryName}`,
-      },
+    const customId = encodeCustomId({
+      t: 'lb',
+      u: url,
+      n: entryName.slice(0, 30),
+      a: String(amountCents),
     });
 
+    const order = await createOrder({
+      amountUsd: chargeAmountUsd,
+      description: `Digital Billboard: ${entryName}`,
+      customId,
+      returnUrl: `${siteUrl}/?claimed=1`,
+      cancelUrl: `${siteUrl}/?cancelled=1`,
+    });
+
+    // Store full metadata in Supabase
     const { error } = await supabase.from('bids').insert({
       entry_url: url,
       entry_name: entryName,
       amount_cents: chargeAmountCents,
-      polar_checkout_id: session.session_id,
+      polar_checkout_id: order.orderId,
       status: 'pending',
+      metadata: JSON.stringify({
+        type: 'leaderboard',
+        url,
+        name: entryName,
+        amount_cents: amountCents,
+        charge_amount_cents: chargeAmountCents,
+      }),
     });
 
     if (error) {
@@ -211,9 +235,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ checkoutUrl: session.checkout_url });
+    return NextResponse.json({ checkoutUrl: order.approvalUrl });
   } catch (err: any) {
-    console.error('Dodo Payments checkout creation error:', err);
+    console.error('PayPal checkout creation error:', err);
     return NextResponse.json(
       { error: 'Failed to create checkout session' },
       { status: 500 }

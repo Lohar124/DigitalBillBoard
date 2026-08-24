@@ -43,19 +43,19 @@ export default function Home() {
   useEffect(() => {
     fetchLeaderboard();
 
-    // Check if user returned from Dodo checkout
+    // Check if user returned from PayPal checkout
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      const paymentId = params.get('payment_id');
-      const status = params.get('status');
+      // PayPal returns ?token=ORDER_ID after user approves payment
+      const paypalToken = params.get('token');
       const sponsorClaimed = params.get('sponsor_claimed');
       const slot = params.get('slot');
 
-      if (paymentId && (status === 'succeeded' || !status)) {
+      if (paypalToken) {
         fetch('/api/verify-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ payment_id: paymentId }),
+          body: JSON.stringify({ order_id: paypalToken }),
         })
           .then((res) => res.json())
           .then((data) => {
@@ -63,7 +63,7 @@ export default function Home() {
               if (data.type === 'sponsor') {
                 setSuccessMessage(`🎉 Successfully claimed Sponsor Slot #${data.slotNumber || slot || ''} for 30 days!`);
                 refreshSponsors();
-              } else {
+              } else if (data.type !== 'already_processed') {
                 setSuccessMessage(`🎉 Successfully claimed spot on the leaderboard for ${data.url}!`);
                 fetchLeaderboard();
               }

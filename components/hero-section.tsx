@@ -58,10 +58,10 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
   useEffect(() => {
     let sessionId = '';
     if (typeof window !== 'undefined') {
-      let saved = localStorage.getItem('eb_session_id');
+      let saved = localStorage.getItem('db_session_id');
       if (!saved) {
         saved = 'v_' + Math.random().toString(36).substring(2, 12) + Date.now().toString(36);
-        localStorage.setItem('eb_session_id', saved);
+        localStorage.setItem('db_session_id', saved);
       }
       sessionId = saved;
     }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
-import { Clock, MousePointerClick, ArrowUpRight, Share2, Flame, Crown } from 'lucide-react';
+import { Clock, MousePointerClick, ArrowUpRight, Share2, Flame, Crown, Sparkles } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import type { LeaderboardItem, MetaData } from '@/lib/leaderboard-data';
 import { cn } from '@/lib/utils';
@@ -11,8 +11,8 @@ import { cn } from '@/lib/utils';
 function getRankBadge(rank: number) {
   if (rank === 1) {
     return (
-      <div className="size-9 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center justify-center text-xs border border-amber-500/30 shrink-0 shadow-xs relative">
-        <Crown className="size-3.5 absolute -top-1.5 -right-1 text-amber-500" />
+      <div className="size-9 sm:size-10 rounded-xl bg-gradient-to-br from-amber-500/20 via-orange-500/20 to-amber-500/10 text-amber-600 dark:text-amber-400 font-mono font-extrabold flex items-center justify-center text-xs border border-amber-500/40 shrink-0 shadow-sm shadow-amber-500/10 relative">
+        <Crown className="size-3.5 absolute -top-1.5 -right-1 text-amber-500 fill-amber-500" />
         #1
       </div>
     );
@@ -144,12 +144,17 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
       >
         <Card
           className={cn(
-            'p-3.5 sm:p-4 rounded-xl transition-all duration-200 shadow-2xs',
+            'p-3.5 sm:p-4 rounded-xl transition-all duration-200 shadow-2xs relative overflow-hidden',
             isChampion
-              ? 'border-amber-500/30 bg-amber-500/[0.02] hover:bg-amber-500/[0.05] hover:border-amber-500/50'
+              ? 'border-amber-500/40 bg-gradient-to-r from-amber-500/[0.04] via-card to-amber-500/[0.02] hover:border-amber-500/60 shadow-sm shadow-amber-500/5'
               : 'border-border bg-card hover:bg-muted/40'
           )}
         >
+          {/* Subtle Champion Glow Line on Top */}
+          {isChampion && (
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500" />
+          )}
+
           <div className="flex items-center gap-3 sm:gap-3.5">
             {/* Rank Badge */}
             {getRankBadge(item.rank)}
@@ -168,22 +173,32 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
 
             {/* Details */}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="font-semibold text-sm sm:text-base text-foreground truncate">
                   {title}
                 </span>
+
                 {isChampion && (
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 shrink-0">
-                    Leader
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0 flex items-center gap-1">
+                    <Sparkles className="size-2.5" /> #1 Champion
                   </span>
                 )}
+
+                {item.clicks >= 1 && (
+                  <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20 shrink-0">
+                    🔥 Active
+                  </span>
+                )}
+
                 <ArrowUpRight className="size-3.5 text-muted-foreground opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0" />
               </div>
+
               {description && (
                 <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5 font-normal">
                   {description}
                 </p>
               )}
+
               <div className="flex items-center gap-3 mt-1 text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-1">
                   <Clock className="size-3 text-muted-foreground/70" />
@@ -227,7 +242,10 @@ export function LeaderboardCard({ item, onClaimClick }: LeaderboardCardProps) {
               </button>
 
               {/* Bid Amount */}
-              <span className="font-mono font-bold text-sm sm:text-base text-foreground min-w-[50px] text-right">
+              <span className={cn(
+                'font-mono font-bold text-sm sm:text-base min-w-[50px] text-right',
+                isChampion ? 'text-amber-600 dark:text-amber-400 font-extrabold' : 'text-foreground'
+              )}>
                 {formatBid(item.bid)}
               </span>
             </div>

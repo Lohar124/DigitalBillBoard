@@ -15,6 +15,7 @@ import { Footer } from "@/components/footer"
 import { MobileLayout } from "@/components/mobile-layout"
 import { ClaimSuccessModal } from "@/components/claim-success-modal"
 import { LiveTicker } from "@/components/live-ticker"
+import { NewsletterCard } from "@/components/newsletter-card"
 import type { LeaderboardItem } from "@/lib/leaderboard-data"
 
 export default function Home() {
@@ -206,6 +207,9 @@ export default function Home() {
                     onClaimClick={handleClaimClick}
                   />
                 </div>
+
+                {/* Audience Newsletter Subscription */}
+                <NewsletterCard />
               </div>
 
               {/* Right Column: Sponsor Slots 6 to 10 */}

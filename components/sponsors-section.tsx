@@ -70,9 +70,15 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-border/60 text-[11px]">
-          <span className="font-mono text-muted-foreground text-[10px]">
-            {slot.days_left ? `${slot.days_left}d left` : '30d left'}
-          </span>
+          {slot.days_left && slot.days_left <= 3 ? (
+            <span className="font-mono text-amber-600 dark:text-amber-400 font-semibold text-[10px] bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex items-center gap-1">
+              🔥 {slot.days_left === 1 ? 'Expires today' : `Expires in ${slot.days_left}d`}
+            </span>
+          ) : (
+            <span className="font-mono text-muted-foreground text-[10px] flex items-center gap-1">
+              <span>⚡ {slot.days_left ? `${slot.days_left}d left` : '30d left'}</span>
+            </span>
+          )}
           <a
             href={slot.url}
             target="_blank"
@@ -88,18 +94,18 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
 
   // Available Empty Slot
   return (
-    <div className="rounded-xl border border-dashed border-border bg-card/60 hover:bg-card hover:border-foreground/30 p-3 transition-colors flex items-center justify-between gap-3 group w-full">
+    <div className="rounded-xl border border-dashed border-border bg-card/60 hover:bg-card hover:border-foreground/40 p-3 transition-colors flex items-center justify-between gap-3 group w-full shadow-2xs">
       <div className="flex items-center gap-2.5 min-w-0">
-        <div className="size-8 rounded-lg border border-dashed border-border flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
+        <div className="size-8 rounded-lg border border-dashed border-border bg-muted/30 flex items-center justify-center text-muted-foreground group-hover:text-foreground transition-colors shrink-0">
           <Plus className="size-3.5" />
         </div>
 
         <div className="min-w-0">
-          <h4 className="font-medium text-xs text-foreground truncate">
-            Sponsor Slot #{slot.slot_number}
+          <h4 className="font-semibold text-xs text-foreground truncate flex items-center gap-1.5">
+            <span>Sponsor Slot #{slot.slot_number}</span>
           </h4>
-          <p className="text-[10px] font-mono text-muted-foreground">
-            $49 · 30 days
+          <p className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+            ✨ Available Now · $49/30d
           </p>
         </div>
       </div>
@@ -108,7 +114,7 @@ export function SponsorSlotCard({ slot, onClaim }: SponsorSlotCardProps) {
       <button
         type="button"
         onClick={() => onClaim(slot.slot_number)}
-        className="text-xs font-medium text-foreground bg-muted hover:bg-muted/80 border border-border px-2.5 py-1 rounded-lg transition-colors cursor-pointer shrink-0"
+        className="text-xs font-semibold text-foreground bg-foreground/10 hover:bg-foreground/20 border border-border px-3 py-1 rounded-lg transition-colors cursor-pointer shrink-0 shadow-2xs"
       >
         Claim
       </button>

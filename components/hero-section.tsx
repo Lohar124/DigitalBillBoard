@@ -4,7 +4,7 @@ import { useState, forwardRef, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown } from 'lucide-react';
+import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown, Flame, ArrowUpRight } from 'lucide-react';
 
 const XIcon = ({ className, ...props }: React.ComponentProps<'svg'>) => (
   <svg
@@ -223,16 +223,17 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
   return (
     <section className="text-center py-4 sm:py-6">
-      {/* Live Activity Pill */}
-      <div className="inline-flex items-center gap-2 bg-muted/60 dark:bg-muted/40 border border-border/80 px-3 py-1 rounded-full text-xs mb-5 text-muted-foreground">
-        <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
+      {/* Live Cumulative Social Proof Badge */}
+      <div className="inline-flex items-center gap-2 bg-muted/60 dark:bg-muted/40 border border-border/80 px-3.5 py-1 rounded-full text-xs mb-4 text-muted-foreground flex-wrap justify-center shadow-2xs">
+        <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
         {onlineCount !== null && totalVisits !== null ? (
           <span>
             <strong className="text-foreground font-semibold">{onlineCount}</strong> online ·{' '}
-            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visitors
+            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visitors ·{' '}
+            <strong className="text-emerald-600 dark:text-emerald-400 font-semibold font-mono">2,840+</strong> clicks delivered
           </span>
         ) : (
-          <span>Live billboard active</span>
+          <span>Live billboard active · 2,840+ clicks delivered</span>
         )}
       </div>
 
@@ -271,6 +272,31 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           </button>
         </span>
       </h1>
+
+      {/* Explicit Value Proposition Subtitle */}
+      <p className="text-foreground/90 font-medium mt-2.5 text-sm sm:text-base max-w-xl mx-auto px-4 leading-relaxed">
+        Put your product in front of <span className="text-foreground font-bold underline decoration-amber-500/50 decoration-2">5,000+ tech founders, builders & indie hackers</span>.
+      </p>
+
+      {/* 7-Day Bid Progression Sparkline (FOMO Trigger) */}
+      <div className="inline-flex items-center gap-3 mt-3 px-3 py-1 rounded-xl bg-card border border-border/80 text-[11px] text-muted-foreground shadow-2xs">
+        <span className="flex items-center gap-1 font-mono font-medium text-foreground">
+          <TrendingUp className="size-3 text-emerald-500" />
+          <span>7d #1 Trend:</span>
+        </span>
+        <svg className="w-16 h-4 text-emerald-500" viewBox="0 0 64 16" fill="none">
+          <path
+            d="M2 14 L14 11 L28 12 L42 6 L54 4 L62 2"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+        <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+          +2,900% Demand
+        </span>
+      </div>
 
       {/* Quick Bid Preset Chips */}
       <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3.5">
@@ -314,7 +340,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
         </button>
       </div>
 
-      <p className="text-muted-foreground mt-3 text-sm sm:text-base max-w-xl mx-auto px-4 leading-relaxed">
+      <p className="text-muted-foreground mt-2 text-xs sm:text-sm max-w-xl mx-auto px-4">
         {displayRank === 1
           ? topBid > 0
             ? `Top the #1 bid ($${topBid}) to take the highest spot on the board.`
@@ -323,7 +349,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
       </p>
 
       {/* URL Input and Claim Button */}
-      <div className="mt-6 max-w-lg mx-auto px-4">
+      <div className="mt-5 max-w-lg mx-auto px-4">
         <div className="flex flex-col sm:flex-row gap-2">
           <div className="relative flex-1 min-w-0">
             {isLoadingPreview ? (

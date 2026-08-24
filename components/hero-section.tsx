@@ -103,14 +103,14 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: normalizedUrl, bid }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || 'Something went wrong');
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.checkoutUrl) {
+        setError(data?.error || `Checkout failed (${res.status})`);
         return;
       }
       window.location.href = data.checkoutUrl;
-    } catch {
-      setError('Something went wrong');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to connect to checkout');
     } finally {
       setIsSubmitting(false);
     }

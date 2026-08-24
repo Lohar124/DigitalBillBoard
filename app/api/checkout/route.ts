@@ -78,47 +78,46 @@ function encodeCustomId(meta: Record<string, string>): string {
 // ────────────────────────────────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null);
-  const type: string = body?.type || 'leaderboard';
-  const rawUrl: string | undefined = body?.url;
-  const name: string | undefined = body?.name;
+  try {
+    const body = await request.json().catch(() => null);
+    const type: string = body?.type || 'leaderboard';
+    const rawUrl: string | undefined = body?.url;
+    const name: string | undefined = body?.name;
 
-  if (!rawUrl) {
-    return NextResponse.json({ error: 'A URL is required' }, { status: 400 });
-  }
-
-  // Sanitize and validate the URL
-  const urlCheck = sanitizeListingUrl(rawUrl);
-  if (!urlCheck.ok) {
-    return NextResponse.json({ error: urlCheck.error }, { status: 400 });
-  }
-
-  const url = urlCheck.url;
-  const hostname = urlCheck.hostname;
-
-  // Check PayPal is configured
-  if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
-    return NextResponse.json(
-      { error: 'Payment system is not configured' },
-      { status: 500 }
-    );
-  }
-
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.lol';
-  const supabase = getSupabaseServerClient();
-
-  // 1. Handle Sponsor Slot checkout ($49 / 30 days)
-  if (type === 'sponsor') {
-    const slotNumber = Number(body?.slot_number);
-    if (!slotNumber || slotNumber < 1 || slotNumber > 10) {
-      return NextResponse.json({ error: 'Invalid slot number (must be 1-10)' }, { status: 400 });
+    if (!rawUrl) {
+      return NextResponse.json({ error: 'A URL is required' }, { status: 400 });
     }
 
-    const description: string = (body?.description || '').slice(0, 300);
-    const logoUrl: string = body?.logo_url || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
-    const entryName = (name || hostname).slice(0, 100);
+    // Sanitize and validate the URL
+    const urlCheck = sanitizeListingUrl(rawUrl);
+    if (!urlCheck.ok) {
+      return NextResponse.json({ error: urlCheck.error }, { status: 400 });
+    }
 
-    try {
+    const url = urlCheck.url;
+    const hostname = urlCheck.hostname;
+
+    // Check PayPal is configured
+    if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
+      return NextResponse.json(
+        { error: 'PayPal credentials are not configured on the server' },
+        { status: 500 }
+      );
+    }
+
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.lol';
+
+    // 1. Handle Sponsor Slot checkout ($49 / 30 days)
+    if (type === 'sponsor') {
+      const slotNumber = Number(body?.slot_number);
+      if (!slotNumber || slotNumber < 1 || slotNumber > 10) {
+        return NextResponse.json({ error: 'Invalid slot number (must be 1-10)' }, { status: 400 });
+      }
+
+      const description: string = (body?.description || '').slice(0, 300);
+      const logoUrl: string = body?.logo_url || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
+      const entryName = (name || hostname).slice(0, 100);
+
       const customId = encodeCustomId({
         t: 'sponsor',
         s: String(slotNumber),
@@ -136,6 +135,7 @@ export async function POST(request: NextRequest) {
 
       // Attempt to store full metadata in Supabase (non-blocking)
       try {
+        const supabase = getSupabaseServerClient();
         await supabase.from('bids').insert({
           entry_url: url,
           entry_name: entryName,
@@ -157,47 +157,50 @@ export async function POST(request: NextRequest) {
       }
 
       return NextResponse.json({ checkoutUrl: order.approvalUrl });
-    } catch (err: any) {
-      console.error('PayPal sponsor checkout error:', err);
+    }
+
+    // 2. Handle Leaderboard Bid checkout
+    const bid: number | undefined = body?.bid;
+    if (!bid || bid < 1 || !Number.isFinite(bid) || bid > 100000) {
       return NextResponse.json(
-        { error: 'Failed to create checkout session' },
-        { status: 500 }
+        { error: 'A bid between $1 and $100,000 is required' },
+        { status: 400 }
       );
     }
-  }
 
-  // 2. Handle Leaderboard Bid checkout
-  const bid: number | undefined = body?.bid;
-  if (!bid || bid < 1 || !Number.isFinite(bid) || bid > 100000) {
-    return NextResponse.json(
-      { error: 'A bid between $1 and $100,000 is required' },
-      { status: 400 }
-    );
-  }
+    const amountCents = Math.round(bid * 100);
 
-  const amountCents = Math.round(bid * 100);
+    // Check existing bid in database if available
+    let existingBidCents = 0;
+    try {
+      const supabase = getSupabaseServerClient();
+      const { data: existing } = await supabase
+        .from('leaderboard_entries')
+        .select('bid_cents')
+        .eq('url', url)
+        .maybeSingle();
 
-  const { data: existing } = await supabase
-    .from('leaderboard_entries')
-    .select('bid_cents')
-    .eq('url', url)
-    .maybeSingle();
+      if (existing?.bid_cents) {
+        existingBidCents = existing.bid_cents;
+      }
+    } catch {
+      // Non-fatal if database is unavailable
+    }
 
-  if (existing && existing.bid_cents >= amountCents) {
-    return NextResponse.json(
-      {
-        error: `Your new bid ($${bid}) must be higher than your current bid ($${existing.bid_cents / 100})`,
-      },
-      { status: 400 }
-    );
-  }
+    if (existingBidCents >= amountCents) {
+      return NextResponse.json(
+        {
+          error: `Your new bid ($${bid}) must be higher than your current bid ($${existingBidCents / 100})`,
+        },
+        { status: 400 }
+      );
+    }
 
-  // Calculate charge amount (only pay the difference if already listed)
-  const chargeAmountCents = existing ? amountCents - existing.bid_cents : amountCents;
-  const chargeAmountUsd = (chargeAmountCents / 100).toFixed(2);
-  const entryName = (name || hostname).slice(0, 100);
+    // Calculate charge amount (only pay the difference if already listed)
+    const chargeAmountCents = existingBidCents > 0 ? amountCents - existingBidCents : amountCents;
+    const chargeAmountUsd = (chargeAmountCents / 100).toFixed(2);
+    const entryName = (name || hostname).slice(0, 100);
 
-  try {
     const customId = encodeCustomId({
       t: 'lb',
       u: url,
@@ -215,6 +218,7 @@ export async function POST(request: NextRequest) {
 
     // Attempt to store full metadata in Supabase (non-blocking)
     try {
+      const supabase = getSupabaseServerClient();
       await supabase.from('bids').insert({
         entry_url: url,
         entry_name: entryName,
@@ -235,7 +239,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ checkoutUrl: order.approvalUrl });
   } catch (err: any) {
-    console.error('PayPal checkout creation error:', err);
+    console.error('Checkout API error:', err);
     return NextResponse.json(
       { error: err?.message || 'Failed to create checkout session' },
       { status: 500 }

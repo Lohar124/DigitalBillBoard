@@ -1,10 +1,42 @@
 import { getSupabaseServerClient } from '@/lib/supabase/server';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
 
-const CACHE_TTL_SECONDS = 30;
+const CACHE_TTL_SECONDS = 5;
+
+// In-memory store fallback for free claim mode & instant responsiveness
+let localFallbackEntries: Array<{
+  url: string;
+  name: string;
+  bid_cents: number;
+  clicks: number;
+  claimed_at: string;
+}> = [];
 
 // In-memory cache to prevent excessive database hits
 let inMemoryCache: { data: LeaderboardItem[]; expiresAt: number } | null = null;
+
+export async function addLocalLeaderboardEntry(entry: {
+  url: string;
+  name: string;
+  bid_cents: number;
+}) {
+  const existingIdx = localFallbackEntries.findIndex((e) => e.url === entry.url);
+  const record = {
+    url: entry.url,
+    name: entry.name,
+    bid_cents: entry.bid_cents,
+    clicks: existingIdx >= 0 ? localFallbackEntries[existingIdx].clicks : 0,
+    claimed_at: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    localFallbackEntries[existingIdx] = record;
+  } else {
+    localFallbackEntries.push(record);
+  }
+
+  inMemoryCache = null;
+}
 
 export async function getLeaderboard(): Promise<LeaderboardItem[]> {
   const now = Date.now();
@@ -19,11 +51,20 @@ export async function getLeaderboard(): Promise<LeaderboardItem[]> {
   try {
     items = await fetchLeaderboardFromDatabase();
   } catch (e) {
-    console.error('Failed to fetch leaderboard from database:', e);
-    items = [];
+    // If Supabase table is not yet created, use local fallback entries
+    items = localFallbackEntries
+      .sort((a, b) => b.bid_cents - a.bid_cents)
+      .map((row, index) => ({
+        rank: index + 1,
+        name: row.name,
+        bid: row.bid_cents / 100,
+        url: row.url,
+        clicks: row.clicks,
+        time: formatRelativeTime(row.claimed_at),
+      }));
   }
 
-  // 3. Cache the result for 30 seconds
+  // 3. Cache the result
   inMemoryCache = {
     data: items,
     expiresAt: now + CACHE_TTL_SECONDS * 1000,
@@ -46,12 +87,23 @@ async function fetchLeaderboardFromDatabase(): Promise<LeaderboardItem[]> {
 
   if (error) throw error;
 
-  return (data ?? []).map((row, index) => ({
+  // Merge any local entries not yet in DB
+  const dbUrls = new Set((data ?? []).map((r) => r.url));
+  const merged = [...(data ?? [])];
+  for (const local of localFallbackEntries) {
+    if (!dbUrls.has(local.url)) {
+      merged.push(local);
+    }
+  }
+
+  merged.sort((a, b) => b.bid_cents - a.bid_cents);
+
+  return merged.map((row, index) => ({
     rank: index + 1,
     name: row.name,
     bid: row.bid_cents / 100,
     url: row.url,
-    clicks: row.clicks,
+    clicks: row.clicks || 0,
     time: formatRelativeTime(row.claimed_at),
   }));
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/paypal';
 import { getSupabaseServerClient } from '@/lib/supabase/server';
+import { addLocalLeaderboardEntry, invalidateLeaderboardCache } from '@/lib/leaderboard';
+import { localSponsorSlots } from '@/app/api/sponsors/route';
 
 // ── URL Sanitization ───────────────────────────────────────────────
 const BLOCKED_DOMAINS = new Set([
@@ -65,7 +67,7 @@ function sanitizeListingUrl(raw: string): { ok: true; url: string; hostname: str
     return { ok: false, error: 'Chat invite links and URL shorteners are not allowed' };
   }
 
-  // Strip query parameters and hash (as stated in the rules)
+  // Strip query parameters and hash
   const cleanUrl = `${parsed.protocol}//${parsed.host}${parsed.pathname}`.replace(/\/+$/, '') || `${parsed.protocol}//${parsed.host}`;
 
   return { ok: true, url: cleanUrl, hostname: parsed.hostname };
@@ -97,17 +99,10 @@ export async function POST(request: NextRequest) {
     const url = urlCheck.url;
     const hostname = urlCheck.hostname;
 
-    // Check PayPal is configured
-    if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
-      return NextResponse.json(
-        { error: 'PayPal credentials are not configured on the server' },
-        { status: 500 }
-      );
-    }
-
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://digitalbillboard.lol';
+    const isFreeMode = process.env.FREE_CLAIM_MODE === 'true' || process.env.NEXT_PUBLIC_FREE_CLAIM_MODE === 'true';
 
-    // 1. Handle Sponsor Slot checkout ($49 / 30 days)
+    // ── 1. Handle Sponsor Slot checkout ($49 / 30 days) ────────────
     if (type === 'sponsor') {
       const slotNumber = Number(body?.slot_number);
       if (!slotNumber || slotNumber < 1 || slotNumber > 10) {
@@ -117,6 +112,50 @@ export async function POST(request: NextRequest) {
       const description: string = (body?.description || '').slice(0, 300);
       const logoUrl: string = body?.logo_url || `https://www.google.com/s2/favicons?domain=${hostname}&sz=128`;
       const entryName = (name || hostname).slice(0, 100);
+
+      // FREE MODE: Activate immediately without PayPal
+      if (isFreeMode) {
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+        localSponsorSlots.set(slotNumber, {
+          url,
+          name: entryName,
+          description,
+          logo_url: logoUrl,
+          claimed_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+        });
+
+        try {
+          const supabase = getSupabaseServerClient();
+          await supabase.from('sponsor_slots').upsert(
+            {
+              slot_number: slotNumber,
+              url,
+              name: entryName,
+              description,
+              logo_url: logoUrl,
+              claimed_at: now.toISOString(),
+              expires_at: expiresAt.toISOString(),
+            },
+            { onConflict: 'slot_number' }
+          );
+        } catch {}
+
+        return NextResponse.json({
+          freeClaim: true,
+          checkoutUrl: `/?sponsor_claimed=1&slot=${slotNumber}`,
+        });
+      }
+
+      // Check PayPal is configured
+      if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
+        return NextResponse.json(
+          { error: 'PayPal credentials are not configured on the server' },
+          { status: 500 }
+        );
+      }
 
       const customId = encodeCustomId({
         t: 'sponsor',
@@ -133,7 +172,7 @@ export async function POST(request: NextRequest) {
         cancelUrl: `${siteUrl}/?cancelled=1`,
       });
 
-      // Attempt to store full metadata in Supabase (non-blocking)
+      // Attempt to store in database (non-blocking)
       try {
         const supabase = getSupabaseServerClient();
         await supabase.from('bids').insert({
@@ -153,13 +192,13 @@ export async function POST(request: NextRequest) {
           }),
         });
       } catch (dbErr) {
-        console.warn('Non-fatal: Could not record sponsor bid in database:', dbErr);
+        console.warn('Non-fatal db log:', dbErr);
       }
 
       return NextResponse.json({ checkoutUrl: order.approvalUrl });
     }
 
-    // 2. Handle Leaderboard Bid checkout
+    // ── 2. Handle Leaderboard Bid checkout ─────────────────────────
     const bid: number | undefined = body?.bid;
     if (!bid || bid < 1 || !Number.isFinite(bid) || bid > 100000) {
       return NextResponse.json(
@@ -169,6 +208,43 @@ export async function POST(request: NextRequest) {
     }
 
     const amountCents = Math.round(bid * 100);
+    const entryName = (name || hostname).slice(0, 100);
+
+    // FREE MODE: Activate immediately without PayPal
+    if (isFreeMode) {
+      await addLocalLeaderboardEntry({
+        url,
+        name: entryName,
+        bid_cents: amountCents,
+      });
+
+      try {
+        const supabase = getSupabaseServerClient();
+        await supabase.from('leaderboard_entries').upsert(
+          {
+            url,
+            name: entryName,
+            bid_cents: amountCents,
+            claimed_at: new Date().toISOString(),
+          },
+          { onConflict: 'url' }
+        );
+        await invalidateLeaderboardCache();
+      } catch {}
+
+      return NextResponse.json({
+        freeClaim: true,
+        checkoutUrl: `/?claimed=1`,
+      });
+    }
+
+    // Check PayPal is configured
+    if (!process.env.PAYPAL_CLIENT_ID || !process.env.PAYPAL_SECRET) {
+      return NextResponse.json(
+        { error: 'PayPal credentials are not configured on the server' },
+        { status: 500 }
+      );
+    }
 
     // Check existing bid in database if available
     let existingBidCents = 0;
@@ -183,9 +259,7 @@ export async function POST(request: NextRequest) {
       if (existing?.bid_cents) {
         existingBidCents = existing.bid_cents;
       }
-    } catch {
-      // Non-fatal if database is unavailable
-    }
+    } catch {}
 
     if (existingBidCents >= amountCents) {
       return NextResponse.json(
@@ -199,7 +273,6 @@ export async function POST(request: NextRequest) {
     // Calculate charge amount (only pay the difference if already listed)
     const chargeAmountCents = existingBidCents > 0 ? amountCents - existingBidCents : amountCents;
     const chargeAmountUsd = (chargeAmountCents / 100).toFixed(2);
-    const entryName = (name || hostname).slice(0, 100);
 
     const customId = encodeCustomId({
       t: 'lb',
@@ -216,7 +289,7 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${siteUrl}/?cancelled=1`,
     });
 
-    // Attempt to store full metadata in Supabase (non-blocking)
+    // Attempt to store in database (non-blocking)
     try {
       const supabase = getSupabaseServerClient();
       await supabase.from('bids').insert({
@@ -234,7 +307,7 @@ export async function POST(request: NextRequest) {
         }),
       });
     } catch (dbErr) {
-      console.warn('Non-fatal: Could not record bid in database:', dbErr);
+      console.warn('Non-fatal db log:', dbErr);
     }
 
     return NextResponse.json({ checkoutUrl: order.approvalUrl });

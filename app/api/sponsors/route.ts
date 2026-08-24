@@ -15,6 +15,16 @@ export interface SponsorSlot {
   duration_days: number;
 }
 
+// In-memory fallback for local/free mode claims
+export const localSponsorSlots: Map<number, {
+  url: string;
+  name: string;
+  description: string;
+  logo_url: string;
+  claimed_at: string;
+  expires_at: string;
+}> = new Map();
+
 export async function GET() {
   const slots: SponsorSlot[] = Array.from({ length: 10 }, (_, i) => ({
     slot_number: i + 1,
@@ -30,6 +40,32 @@ export async function GET() {
     duration_days: 30,
   }));
 
+  const now = Date.now();
+
+  // 1. Check local fallback map
+  for (const [slotNum, data] of localSponsorSlots.entries()) {
+    const slotIdx = slotNum - 1;
+    if (slotIdx >= 0 && slotIdx < 10) {
+      const expiresAt = new Date(data.expires_at).getTime();
+      if (expiresAt > now) {
+        slots[slotIdx] = {
+          slot_number: slotNum,
+          url: data.url,
+          name: data.name,
+          description: data.description,
+          logo_url: data.logo_url,
+          claimed_at: data.claimed_at,
+          expires_at: data.expires_at,
+          days_left: Math.max(1, Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24))),
+          is_active: true,
+          price: 49,
+          duration_days: 30,
+        };
+      }
+    }
+  }
+
+  // 2. Query Supabase
   try {
     const supabase = getSupabaseServerClient();
     const { data, error } = await supabase
@@ -38,7 +74,6 @@ export async function GET() {
       .order('slot_number', { ascending: true });
 
     if (!error && Array.isArray(data)) {
-      const now = Date.now();
       for (const item of data) {
         const slotIdx = item.slot_number - 1;
         if (slotIdx >= 0 && slotIdx < 10) {
@@ -65,14 +100,14 @@ export async function GET() {
       }
     }
   } catch (err) {
-    console.error('Error fetching sponsor slots:', err);
+    // Database table not created yet; fallback slots already loaded
   }
 
   return NextResponse.json(
     { slots },
     {
       headers: {
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+        'Cache-Control': 'public, s-maxage=5, stale-while-revalidate=30',
       },
     }
   );

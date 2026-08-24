@@ -9,12 +9,12 @@ export function Footer() {
         <div>
           <span>Digital Billboard · Built by </span>
           <Link
-            href="https://x.com/LoharTushal"
+            href="https://www.linkedin.com/in/akshay-lohar/"
             target="_blank"
             rel="noopener noreferrer"
             className="text-foreground hover:underline font-medium"
           >
-            Tushal Lohar
+            Akshay Lohar
           </Link>
         </div>
 

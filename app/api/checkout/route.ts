@@ -134,25 +134,27 @@ export async function POST(request: NextRequest) {
         cancelUrl: `${siteUrl}/?cancelled=1`,
       });
 
-      // Store full metadata in Supabase so we can recover it after payment
-      await supabase.from('bids').insert({
-        entry_url: url,
-        entry_name: entryName,
-        amount_cents: 4900,
-        polar_checkout_id: order.orderId,
-        status: 'pending',
-        metadata: JSON.stringify({
-          type: 'sponsor',
-          slot_number: slotNumber,
-          url,
-          name: entryName,
-          description,
-          logo_url: logoUrl,
+      // Attempt to store full metadata in Supabase (non-blocking)
+      try {
+        await supabase.from('bids').insert({
+          entry_url: url,
+          entry_name: entryName,
           amount_cents: 4900,
-        }),
-      }).then(({ error }) => {
-        if (error) console.error('Supabase sponsor bid insert error:', error);
-      });
+          polar_checkout_id: order.orderId,
+          status: 'pending',
+          metadata: JSON.stringify({
+            type: 'sponsor',
+            slot_number: slotNumber,
+            url,
+            name: entryName,
+            description,
+            logo_url: logoUrl,
+            amount_cents: 4900,
+          }),
+        });
+      } catch (dbErr) {
+        console.warn('Non-fatal: Could not record sponsor bid in database:', dbErr);
+      }
 
       return NextResponse.json({ checkoutUrl: order.approvalUrl });
     } catch (err: any) {
@@ -211,35 +213,31 @@ export async function POST(request: NextRequest) {
       cancelUrl: `${siteUrl}/?cancelled=1`,
     });
 
-    // Store full metadata in Supabase
-    const { error } = await supabase.from('bids').insert({
-      entry_url: url,
-      entry_name: entryName,
-      amount_cents: chargeAmountCents,
-      polar_checkout_id: order.orderId,
-      status: 'pending',
-      metadata: JSON.stringify({
-        type: 'leaderboard',
-        url,
-        name: entryName,
-        amount_cents: amountCents,
-        charge_amount_cents: chargeAmountCents,
-      }),
-    });
-
-    if (error) {
-      console.error('Supabase bid insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to record bid' },
-        { status: 500 }
-      );
+    // Attempt to store full metadata in Supabase (non-blocking)
+    try {
+      await supabase.from('bids').insert({
+        entry_url: url,
+        entry_name: entryName,
+        amount_cents: chargeAmountCents,
+        polar_checkout_id: order.orderId,
+        status: 'pending',
+        metadata: JSON.stringify({
+          type: 'leaderboard',
+          url,
+          name: entryName,
+          amount_cents: amountCents,
+          charge_amount_cents: chargeAmountCents,
+        }),
+      });
+    } catch (dbErr) {
+      console.warn('Non-fatal: Could not record bid in database:', dbErr);
     }
 
     return NextResponse.json({ checkoutUrl: order.approvalUrl });
   } catch (err: any) {
     console.error('PayPal checkout creation error:', err);
     return NextResponse.json(
-      { error: 'Failed to create checkout session' },
+      { error: err?.message || 'Failed to create checkout session' },
       { status: 500 }
     );
   }

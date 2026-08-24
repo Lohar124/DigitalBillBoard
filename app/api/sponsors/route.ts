@@ -68,5 +68,12 @@ export async function GET() {
     console.error('Error fetching sponsor slots:', err);
   }
 
-  return NextResponse.json({ slots });
+  return NextResponse.json(
+    { slots },
+    {
+      headers: {
+        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+      },
+    }
+  );
 }

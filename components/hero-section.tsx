@@ -142,7 +142,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
         {onlineCount !== null && totalVisits !== null ? (
           <span>
             <strong className="text-foreground font-semibold">{onlineCount}</strong> online ·{' '}
-            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visits
+            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visitors
           </span>
         ) : (
           <span>Live billboard active</span>

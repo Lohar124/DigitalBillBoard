@@ -4,7 +4,7 @@ import { useState, forwardRef, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown, Flame, ArrowUpRight, DollarSign, Layers, ShieldCheck, CheckSquare, Square } from 'lucide-react';
+import { Globe, Minus, Plus, Loader2, Sparkles, TrendingUp, Zap, Crown, Flame, ArrowUpRight, DollarSign, Layers, ChevronDown, CheckSquare, Square } from 'lucide-react';
 import { CATEGORIES, getCategoryById } from '@/lib/categories';
 import type { LeaderboardItem } from '@/lib/leaderboard-data';
 
@@ -252,48 +252,30 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
 
   return (
     <section className="text-center py-4 sm:py-6">
-      {/* Header Live Platform Stats Banner */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-xl mx-auto mb-6 px-3">
-        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase">Platform Vol</div>
-          <div className="text-xs sm:text-sm font-bold font-mono text-foreground mt-0.5">
-            ${totalVolume.toLocaleString()}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase">Total Bids</div>
-          <div className="text-xs sm:text-sm font-bold font-mono text-foreground mt-0.5">
-            {totalBidsCount} listings
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase">#1 Record</div>
-          <div className="text-xs sm:text-sm font-bold font-mono text-amber-600 dark:text-amber-400 mt-0.5">
-            ${topBid}
-          </div>
-        </div>
-        <div className="rounded-xl border border-border bg-card p-2 text-center shadow-2xs">
-          <div className="text-[10px] font-mono text-muted-foreground uppercase flex items-center justify-center gap-1">
-            <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            <span>Online</span>
-          </div>
-          <div className="text-xs sm:text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-0.5">
-            {onlineCount || 1} live
-          </div>
-        </div>
+      {/* Live Online Visitors Capsule */}
+      <div className="inline-flex items-center gap-2 bg-muted/70 dark:bg-muted/40 border border-border px-3.5 py-1 rounded-full text-xs mb-5 text-muted-foreground">
+        <span className="size-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+        {onlineCount !== null && totalVisits !== null ? (
+          <span>
+            <strong className="text-foreground font-semibold">{onlineCount}</strong> online ·{' '}
+            <strong className="text-foreground font-semibold">{totalVisits.toLocaleString()}</strong> visitors since launch
+          </span>
+        ) : (
+          <span>Live billboard active · 2,840+ clicks delivered</span>
+        )}
       </div>
 
       {/* Main Headline */}
-      <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-foreground">
-        Claim #{displayRank} for{' '}
-        <span className="inline-flex items-center gap-1.5 align-middle">
+      <h1 className="text-4xl sm:text-6xl font-black tracking-tight text-foreground flex items-center justify-center gap-2 flex-wrap">
+        <span>Claim #{displayRank} for</span>
+        <span className="inline-flex items-center gap-1 text-[#f26e5b] dark:text-[#ff7e6c]">
           <button
             type="button"
             onClick={handleDecrease}
-            className="inline-flex items-center justify-center size-8 sm:size-9 rounded-full border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center size-7 sm:size-8 rounded-full border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Decrease bid"
           >
-            <Minus className="size-3.5" />
+            <Minus className="size-3" />
           </button>
           <input
             type="text"
@@ -305,109 +287,66 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                 onBidChange?.(num);
               }
             }}
-            className="bg-transparent border-none outline-none text-foreground text-center font-black text-3xl sm:text-5xl p-0 focus:ring-0 w-auto min-w-0"
+            className="bg-transparent border-none outline-none text-[#f26e5b] dark:text-[#ff7e6c] text-center font-black text-4xl sm:text-6xl p-0 focus:ring-0 w-auto min-w-0"
             size={bidText.length}
           />
           <button
             type="button"
             onClick={handleIncrease}
-            className="inline-flex items-center justify-center size-8 sm:size-9 rounded-full border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            className="inline-flex items-center justify-center size-7 sm:size-8 rounded-full border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
             aria-label="Increase bid"
           >
-            <Plus className="size-3.5" />
+            <Plus className="size-3" />
           </button>
         </span>
       </h1>
 
-      {/* Explicit Value Proposition Subtitle */}
-      <p className="text-foreground/90 font-medium mt-2.5 text-sm sm:text-base max-w-xl mx-auto px-4 leading-relaxed">
-        Put your project in front of <span className="text-foreground font-bold underline decoration-amber-500/50 decoration-2">5,000+ tech founders, builders & indie hackers</span>.
+      {/* Explanatory Subtitle */}
+      <p className="text-muted-foreground mt-3 text-xs sm:text-sm max-w-lg mx-auto px-4 leading-relaxed">
+        <span className="text-foreground font-semibold">New spots start at $5.</span> Paying less than the #1 price still puts you on the board at whatever place that bid can take.
       </p>
 
-      {/* 7-Day Bid Progression Sparkline */}
-      <div className="inline-flex items-center gap-3 mt-3 px-3 py-1 rounded-xl bg-card border border-border/80 text-[11px] text-muted-foreground shadow-2xs">
-        <span className="flex items-center gap-1 font-mono font-medium text-foreground">
-          <TrendingUp className="size-3 text-emerald-500" />
-          <span>7d #1 Demand:</span>
-        </span>
-        <svg className="w-16 h-4 text-emerald-500" viewBox="0 0 64 16" fill="none">
-          <path
-            d="M2 14 L14 11 L28 12 L42 6 L54 4 L62 2"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-        <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
-          +2,900% High FOMO
-        </span>
-      </div>
-
-      {/* Quick Bid Preset Chips */}
-      <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3.5">
-        <button
-          type="button"
-          onClick={() => applyPreset(topBid > 0 ? topBid + 1 : 5)}
-          className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer flex items-center gap-1 ${
-            bid === (topBid > 0 ? topBid + 1 : 5)
-              ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-semibold'
-              : 'bg-card border-border text-muted-foreground hover:text-foreground hover:bg-muted/80'
-          }`}
-        >
-          <Crown className="size-3 text-amber-500" />
-          <span>Top #1 (${topBid > 0 ? topBid + 1 : 5})</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyPreset(bid + 5)}
-          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer flex items-center gap-1"
-        >
-          <Zap className="size-3 text-emerald-500" />
-          <span>+$5 Boost</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyPreset(bid + 10)}
-          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer flex items-center gap-1"
-        >
-          <TrendingUp className="size-3 text-blue-500" />
-          <span>+$10 Dominator</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => applyPreset(25)}
-          className="px-2.5 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors cursor-pointer"
-        >
-          $25 Spot
-        </button>
-      </div>
-
-      {/* URL Input and Submission Area */}
-      <div className="mt-5 max-w-lg mx-auto px-4 text-left">
-        <div className="flex flex-col sm:flex-row gap-2">
+      {/* Main Claim Input Row with Inline Category Dropdown & Outbid Button */}
+      <div className="mt-6 max-w-2xl mx-auto px-4 text-left">
+        <div className="flex flex-col sm:flex-row items-stretch gap-2.5">
+          {/* URL Input */}
           <div className="relative flex-1 min-w-0">
             {isLoadingPreview ? (
-              <Loader2 className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
+              <Loader2 className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground animate-spin" />
             ) : isHandle ? (
-              <XIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <XIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             ) : (
-              <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Globe className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             )}
             <Input
               ref={ref}
-              placeholder="Your website URL or @handle"
+              placeholder="Your product URL or @handle"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="pl-10 h-11 text-sm bg-card border-border rounded-xl"
+              className="pl-11 h-12 text-sm bg-card border-border rounded-2xl shadow-2xs"
             />
           </div>
+
+          {/* Category Dropdown (Right next to input) */}
+          <div className="relative shrink-0 sm:w-52">
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full h-12 text-xs sm:text-sm bg-card border border-border rounded-2xl px-3.5 text-foreground appearance-none pr-8 cursor-pointer focus:outline-none focus:ring-1 focus:ring-foreground shadow-2xs font-medium"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+          </div>
+
+          {/* Outbid / Claim Button */}
           <Button
             size="lg"
-            className="h-11 px-6 rounded-xl font-bold bg-foreground text-background hover:opacity-90 transition-opacity shrink-0 cursor-pointer shadow-xs"
+            className="h-12 px-7 rounded-2xl font-bold bg-[#f26e5b] hover:bg-[#e25d4a] text-white transition-all shrink-0 cursor-pointer shadow-sm text-sm"
             onClick={handleClaim}
             disabled={isSubmitting}
           >
@@ -416,23 +355,27 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                 <Loader2 className="size-4 animate-spin" /> Redirecting...
               </span>
             ) : (
-              `Claim #${displayRank}`
+              'Outbid'
             )}
           </Button>
         </div>
 
-        {/* Live Auto-Scraped Card Preview with Category Selector */}
+        <p className="text-[11px] text-muted-foreground mt-2 text-center">
+          Already on the list? Enter the same URL or @handle and up your bid.
+        </p>
+
+        {/* Live Auto-Scraped Card Preview with Custom Title/Description & Policy Checkbox */}
         {urlPreview && (
-          <div className="mt-3 p-4 rounded-2xl bg-card border border-border text-left shadow-xs space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="mt-3.5 p-4 rounded-2xl bg-card border border-border text-left shadow-xs space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="size-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
+                <div className="size-9 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 overflow-hidden">
                   <Image
                     src={urlPreview.favicon}
                     alt={urlPreview.title}
-                    width={16}
-                    height={16}
-                    className="size-4 object-contain"
+                    width={18}
+                    height={18}
+                    className="size-4.5 object-contain"
                     unoptimized
                   />
                 </div>
@@ -441,7 +384,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                     {customTitle || urlPreview.title}
                   </div>
                   <div className="text-[11px] text-muted-foreground truncate font-mono">
-                    {urlPreview.hostname}
+                    {urlPreview.hostname} · <span className="text-amber-500 font-semibold">{getCategoryById(selectedCategory).name}</span>
                   </div>
                 </div>
               </div>
@@ -456,11 +399,11 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
               </div>
             </div>
 
-            {/* Custom Description & Category Selector */}
+            {/* Custom Description */}
             <div className="space-y-2 pt-1 border-t border-border/60">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Title / Brand</label>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Brand Title</label>
                   <Input
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
@@ -469,33 +412,15 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase flex items-center gap-1">
-                    <span>Category</span>
-                    <span className="text-[9px] text-amber-500 font-mono">AI Auto-Tagged</span>
-                  </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="h-8 w-full text-xs bg-background rounded-lg border border-border px-2 text-foreground mt-0.5 outline-none"
-                  >
-                    {CATEGORIES.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.icon} {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="text-[10px] font-semibold text-muted-foreground uppercase">Tagline / Description</label>
+                  <Input
+                    value={customDesc}
+                    onChange={(e) => setCustomDesc(e.target.value)}
+                    placeholder="Short tagline (max 150 chars)"
+                    maxLength={150}
+                    className="h-8 text-xs bg-background rounded-lg border-border mt-0.5"
+                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-semibold text-muted-foreground uppercase">Tagline / Description</label>
-                <Input
-                  value={customDesc}
-                  onChange={(e) => setCustomDesc(e.target.value)}
-                  placeholder="Short tagline (max 150 chars)"
-                  maxLength={150}
-                  className="h-8 text-xs bg-background rounded-lg border-border mt-0.5"
-                />
               </div>
             </div>
 
@@ -509,7 +434,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
                   type="checkbox"
                   checked={agreedToPolicy}
                   onChange={(e) => setAgreedToPolicy(e.target.checked)}
-                  className="mt-0.5 rounded border-border size-3.5 accent-foreground cursor-pointer"
+                  className="mt-0.5 rounded border-border size-3.5 accent-[#f26e5b] cursor-pointer"
                 />
                 <span>
                   I understand all bids are <strong className="text-foreground">final and non-refundable</strong> immediately upon placement on the billboard.
@@ -519,10 +444,7 @@ export const HeroSection = forwardRef<HTMLInputElement, HeroSectionProps>(functi
           </div>
         )}
 
-        {error && <p className="text-xs text-destructive mt-2">{error}</p>}
-        <p className="text-xs text-muted-foreground mt-2.5 text-center">
-          Already listed? Enter the same URL or @handle to increase your bid — you only pay the difference.
-        </p>
+        {error && <p className="text-xs text-destructive mt-2 text-center">{error}</p>}
       </div>
     </section>
   );
